@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "plt-returns"
+version = "0.1.0"
+description = ""
+authors = ["Joe Farrington <farrington.joe@gmail.com>"]
+readme = "README.md"
+packages = [{include = "plt_returns"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+hydra-core = "^1.2.0"
+numpyro = "^0.10.1, <0.11.0"
+gymnax = "^0.0.5"
+optuna = "^3.0.5"
+flax = "<0.6.5"
+orbax = "<=0.1.2"
+numpy = "<1.24"
+pandas = "^1.5.0"
+matplotlib = "^3.6.2"
+tensorflow-probability = "^0.19.0"
+plotly = "^5.11.0"
+seaborn = "^0.12.1"
+scipy = "^1.7.0"
+viso-jax = {git = "https://github.com/joefarrington/viso_jax.git"}
+
+[tool.poetry.group.jax.dependencies]
+jax = {extras = ["cuda"], version = "^0.3.15, <0.4.0", source = "jax"}
+jaxlib = {version = "^0.3.15, <0.4.0", source = "jaxlib"}
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+black = "^22.12.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.1.3"
+pytest-datadir = "^1.4.1"
+
+[[tool.poetry.source]]
+name = "jax"
+url = "https://storage.googleapis.com/jax-releases/jax_releases.html"
+default = false
+secondary = false
+
+[[tool.poetry.source]]
+name = "jaxlib"
+url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+default = false
+secondary = false
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "serial",
+    "jax: marks tests for checking JAX recognises accelerator",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
