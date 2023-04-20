@@ -1,0 +1,8 @@
+# @package _global_
+
+rollout_wrapper:
+  env_kwargs:
+    max_useful_life: 3
+  env_params:
+    initial_stock: [0,0,0]
+    age_on_arrival_distribution: [0.3, 0.2, 0.5]
