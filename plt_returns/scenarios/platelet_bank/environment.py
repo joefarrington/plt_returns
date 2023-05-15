@@ -23,6 +23,9 @@ import distrax
 # Allow initial weekday to be changed like in Mirjalili env
 # Verification of vars in create_env_params
 # Consistent prob package? Numpyro, distrax, tfp
+# Creating the confusion matrix will slow things down,
+# we should have a flag or a mode for testing with extra info
+# that would include it
 
 
 @struct.dataclass
@@ -102,7 +105,6 @@ class EnvParams:
         return_prediction_model_specificity: float = 1,
         gamma: float = 1.0,
     ):
-
         # TODO: Check that all inputs are correct types/shapes/in ranges
 
         return EnvParams(
@@ -135,11 +137,16 @@ class PlateletBankGymnax(environment.Environment):
         max_useful_life: int = 6,
         max_order_quantity: int = 100,
         max_demand: int = 100,
+        return_detailed_info: bool = False,
     ):
         super().__init__()
         self.max_useful_life = max_useful_life
         self.max_order_quantity = max_order_quantity
         self.max_demand = max_demand  # May demand applies to both am and pm, should be set quite high; sampled demand clipped using this value
+        if return_detailed_info:
+            self._get_detailed_info_fn = self._get_detailed_info
+        else:
+            self._get_detailed_info_fn = lambda _, *args, **kwargs: {}
 
     @property
     def default_params(self) -> EnvParams:
@@ -174,9 +181,10 @@ class PlateletBankGymnax(environment.Environment):
         age_on_arrival_distribution = params.age_on_arrival_distributions[weekday]
 
         # Receive order, with random distributed remaining useful lives
-        opening_stock_am = state.stock + distrax.Multinomial(
-            action, age_on_arrival_distribution
+        received_order = distrax.Multinomial(
+            action, probs=age_on_arrival_distribution
         ).sample(seed=arrival_key)
+        opening_stock_am = state.stock + received_order
 
         ## Pre-return activity
 
@@ -191,6 +199,7 @@ class PlateletBankGymnax(environment.Environment):
         pred_sample_am = distrax.Uniform().sample(
             seed=pred_return_key_am, sample_shape=self.max_demand + 1
         )
+
         return_pred_samples_am = jnp.where(
             return_samples_am,
             pred_sample_am < params.return_prediction_model_sensitivity,
@@ -288,40 +297,55 @@ class PlateletBankGymnax(environment.Environment):
         state = EnvState(closing_stock, to_be_returned, weekday, state.step + 1)
         done = self.is_terminal(state, params)
 
+        # More expensive info to compute, so only do it if needed
+        detailed_info = self._get_detailed_info_fn(
+            demand_am,
+            return_samples_am,
+            return_pred_samples_am,
+            demand_pm,
+            return_samples_pm,
+            return_pred_samples_pm,
+        )
+        info = {
+            "weekday": weekday,
+            "discount": self.discount(state, params),
+            "cumulative_gamma": cumulative_gamma,
+            "demand_am": demand_am,
+            "demand_pm": demand_pm,
+            "demand": demand_am + demand_pm,
+            "expiries": expiries,
+            "shortage": backorders,
+            "slippage": slippage,
+            "holding": jnp.sum(closing_stock),
+            "units_in_stock": jnp.sum(closing_stock),
+            "opening_stock": jnp.sum(opening_stock_am),
+            "received_order": received_order,
+            "closing_stock_am": jnp.sum(closing_stock_am),
+            "returned_into_stock": jnp.sum(back_in_stock_from_returned),
+            "opening_stock_pm": jnp.sum(opening_stock_pm),
+            "backorders_am": backorders_am,
+            "backorder_pm": backorders_pm,
+            "stock_expiries": stock_expiries,
+            "expiries_from_returned": expiries_from_returned,
+            "to_be_returned": to_be_returned,
+            "to_be_returned_from_stock_am": jnp.sum(to_be_returned_from_stock_am),
+            "to_be_returned_from_emergency_orders_am": jnp.sum(
+                to_be_returned_from_emergency_orders_am
+            ),
+            "to_be_returned_from_stock_pm": jnp.sum(to_be_returned_from_stock_pm),
+            "to_be_returned_from_emergency_orders_pm": jnp.sum(
+                to_be_returned_from_emergency_orders_pm
+            ),
+        }
+
+        info = info | detailed_info
+
         return (
             lax.stop_gradient(self.get_obs(state)),
             lax.stop_gradient(state),
             reward,
             done,
-            {
-                "weekday": weekday,
-                "discount": self.discount(state, params),
-                "cumulative_gamma": cumulative_gamma,
-                "demand_am": demand_am,
-                "demand_pm": demand_pm,
-                "demand": demand_am + demand_pm,
-                "expiries": expiries,
-                "shortage": backorders,
-                "slippage": slippage,
-                "holding": jnp.sum(closing_stock),
-                "units_in_stock": jnp.sum(closing_stock),
-                "opening_stock": jnp.sum(opening_stock_am),
-                "closing_stock_am": jnp.sum(closing_stock_am),
-                "returned_into_stock": jnp.sum(back_in_stock_from_returned),
-                "opening_stock_pm": jnp.sum(opening_stock_pm),
-                "backorders_am": backorders_am,
-                "backorder_pm": backorders_pm,
-                "stock_expiries": stock_expiries,
-                "expiries_from_returned": expiries_from_returned,
-                "to_be_returned_from_stock_am": jnp.sum(to_be_returned_from_stock_am),
-                "to_be_returned_from_emergency_orders_am": jnp.sum(
-                    to_be_returned_from_emergency_orders_am
-                ),
-                "to_be_returned_from_stock_pm": jnp.sum(to_be_returned_from_stock_pm),
-                "to_be_returned_from_emergency_orders_pm": jnp.sum(
-                    to_be_returned_from_emergency_orders_pm
-                ),
-            },
+            info,
         )
 
     # NOTE: Starting with zero inventory here
@@ -525,6 +549,40 @@ class PlateletBankGymnax(environment.Environment):
                 "weekday": spaces.Discrete(7),
             }
         )
+
+    def _build_confusion_matrix(
+        self, demand: int, return_samples: chex.Array, return_pred_samples: chex.Array
+    ) -> chex.Array:
+        """Build confusion matrix for return prediction model, return in info for testing purposes"""
+        cm = jnp.zeros((2, 2))
+
+        def update_cm(i, cm):
+            indices = (return_samples[i], return_pred_samples[i])
+            updated_cm = jax.lax.dynamic_update_slice(
+                cm, (cm[indices] + 1).reshape(1, 1), indices
+            )
+            return updated_cm
+
+        cm = jax.lax.fori_loop(0, demand, update_cm, cm)
+        return cm
+
+    def _get_detailed_info(
+        self,
+        demand_am: int,
+        return_samples_am: chex.Array,
+        return_pred_samples_am: chex.Array,
+        demand_pm: int,
+        return_samples_pm: chex.Array,
+        return_pred_samples_pm: chex.Array,
+    ) -> Dict[str, chex.Array]:
+        return {
+            "cm_am": self._build_confusion_matrix(
+                demand_am, return_samples_am, return_pred_samples_am
+            ),
+            "cm_pm": self._build_confusion_matrix(
+                demand_pm, return_samples_pm, return_pred_samples_pm
+            ),
+        }
 
     @classmethod
     def calculate_kpis(cls, rollout_results: Dict) -> Dict[str, float]:
