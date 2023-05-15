@@ -46,6 +46,7 @@ rollout_wrapper:
     max_useful_life: 6
     max_order_quantity: 100
     max_demand: 100
+    return_detailed_info: False
   env_params:
     poisson_mean_demand_pre_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
     poisson_mean_demand_post_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
