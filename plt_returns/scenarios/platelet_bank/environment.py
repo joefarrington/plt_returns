@@ -52,7 +52,7 @@ class EnvParams:
     slippage: float
     initial_weekday: int
     initial_stock: chex.Array
-    age_on_arrival_distribution: chex.Array
+    age_on_arrival_distributions: chex.Array
     variable_order_cost: int
     fixed_order_cost: int
     shortage_cost: int
@@ -89,7 +89,7 @@ class EnvParams:
         slippage=0.0,
         initial_weekday: int = 6,  # At the first observation, it is Sunday evening
         initial_stock: chex.Array = [0, 0, 0],
-        age_on_arrival_distribution: chex.Array = [0, 0, 1],
+        age_on_arrival_distributions: chex.Array = [[0, 0, 1] for i in range(7)],
         variable_order_cost: int = -650,
         fixed_order_cost: int = -225,
         shortage_cost: int = -3250,
@@ -111,7 +111,7 @@ class EnvParams:
             slippage,
             initial_weekday,
             jnp.array(initial_stock),
-            jnp.array(age_on_arrival_distribution),
+            jnp.array(age_on_arrival_distributions),
             variable_order_cost,
             fixed_order_cost,
             shortage_cost,
@@ -170,9 +170,12 @@ class PlateletBankGymnax(environment.Environment):
         # Update weekday
         weekday = (state.weekday + 1) % 7
 
+        # Get the age on arrival distribution for the weekday
+        age_on_arrival_distribution = params.age_on_arrival_distributions[weekday]
+
         # Receive order, with random distributed remaining useful lives
         opening_stock_am = state.stock + distrax.Multinomial(
-            action, probs=params.age_on_arrival_distribution
+            action, age_on_arrival_distribution
         ).sample(seed=arrival_key)
 
         ## Pre-return activity
@@ -201,7 +204,7 @@ class PlateletBankGymnax(environment.Environment):
             jnp.zeros_like(opening_stock_am),
             return_samples_am,
             return_pred_samples_am,
-            params.age_on_arrival_distribution,
+            age_on_arrival_distribution,  # For the specific weekday
             issue_key_am,
         )
 
@@ -252,7 +255,7 @@ class PlateletBankGymnax(environment.Environment):
             jnp.zeros_like(opening_stock_pm),
             return_samples_pm,
             return_pred_samples_pm,
-            params.age_on_arrival_distribution,
+            age_on_arrival_distribution,
             issue_key_pm,
         )
 
