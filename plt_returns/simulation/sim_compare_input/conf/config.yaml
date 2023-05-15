@@ -46,9 +46,13 @@ rollout_wrapper:
     max_useful_life: 6
     max_order_quantity: 100
     max_demand: 100
+  # For the purposes of this notebook where we may consider different levels of return prob,
+  # put in estimate of actual demand for tx (i.e. for UCLH that is estimated as raw x 0.92)
+  # And then we scale up the demand by dividing by (1 - return_prob). So we're assuming the same
+  # number of people always need to transfused, but there are a verying number of excess orders
   env_params:
-    poisson_mean_demand_pre_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
-    poisson_mean_demand_post_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
+    poisson_mean_demand_pre_return: ${base_demand.poisson_mean_demand_pre_return}
+    poisson_mean_demand_post_return: ${base_demand.poisson_mean_demand_post_return}
     slippage: 0.0
     initial_weekday: 6  # At the first observation, it is Sunday evening
     initial_stock: [0, 0, 0, 0, 0, 0]
@@ -60,11 +64,72 @@ rollout_wrapper:
     holding_cost: -130
     slippage_cost: -650
     max_steps_in_episode: 365
-    return_probability: 0.08
+    return_probability: 0.08 # If return prob zero, base demand is the same as actual demand
     return_prediction_model_sensitivity: 1
     return_prediction_model_specificity: 1
     gamma: 1.0
   return_info: False
+
+base_demand:
+  poisson_mean_demand_pre_return: [13.24, 15.32 , 12.09, 13.0456, 14.18,  8.54,  9.04]
+  poisson_mean_demand_post_return: [13.24, 15.32 , 12.09, 13.0456, 14.18,  8.54,  9.04]
+
+#scan_over:
+#  - name: return_0.00
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.00
+#  - name: return_0.05
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.05
+#  - name: return_0.10
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.10
+#  - name: return_0.15
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.15
+#  - name: return_0.20
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.20
+#  - name: return_0.25
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.25
+#  - name: return_0.30
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.30
+# - name: return_0.35
+#    updates:
+#     rollout_wrapper:
+#      env_params:
+#          return_probability: 0.35
+#  - name: return_0.40
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.40
+#  - name: return_0.45
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.45
+#  - name: return_0.50
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          return_probability: 0.50
 
 scan_over:
   - name: slippage_0
@@ -72,51 +137,51 @@ scan_over:
       rollout_wrapper:
         env_params:
           slippage: 0.0
-  - name: slippage_0.1
-    updates:
-      rollout_wrapper:
-        env_params:
-          slippage: 0.1
+#  - name: slippage_0.1
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          slippage: 0.1
   - name: slippage_0.2
     updates:
       rollout_wrapper:
         env_params:
           slippage: 0.2
-  - name: slippage_0.3
-    updates:
-      rollout_wrapper:
-        env_params:
-          slippage: 0.3
+#  - name: slippage_0.3
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          slippage: 0.3
   - name: slippage_0.4
     updates:
       rollout_wrapper:
         env_params:
           slippage: 0.4
-  - name: slippage_0.5
-    updates:
-      rollout_wrapper:
-        env_params:
-          slippage: 0.5
+#  - name: slippage_0.5
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          slippage: 0.5
   - name: slippage_0.6
     updates:
       rollout_wrapper:
         env_params:
           slippage: 0.6
-  - name: slippage_0.7
-    updates:
-      rollout_wrapper:
-        env_params:
-          slippage: 0.7
+#  - name: slippage_0.7
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          slippage: 0.7
   - name: slippage_0.8
     updates:
       rollout_wrapper:
         env_params:
           slippage: 0.8
-  - name: slippage_0.9
-    updates:
-      rollout_wrapper:
-        env_params:
-          slippage: 0.9
+#  - name: slippage_0.9
+#    updates:
+#      rollout_wrapper:
+#        env_params:
+#          slippage: 0.9
   - name: slippage_1.0
     updates:
       rollout_wrapper:

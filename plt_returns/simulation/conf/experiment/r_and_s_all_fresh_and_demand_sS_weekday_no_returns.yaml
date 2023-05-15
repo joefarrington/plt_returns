@@ -2,17 +2,20 @@
 
 rollout_wrapper:
   env_kwargs:
-    max_useful_life: 5
+    max_useful_life: 3
   env_params:
-    initial_stock: [0,0,0,0,0]
+    initial_stock: [0,0,0]
     age_on_arrival_distributions: 
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
-      - [0.025, 0.121, 0.330, 0.403, 0.121]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+    poisson_mean_demand_pre_return: [18.75, 18.65, 19.6, 18.9, 20.25, 13.6, 14.2]
+    poisson_mean_demand_post_return: [18.75, 18.65, 19.6, 18.9, 20.25, 13.6, 14.2]
+    return_probability: 0.0
   
 policy:
   _target_: plt_returns.replenishment_policies.heuristic_policies.ss_policy.sSPolicy
@@ -25,4 +28,4 @@ param_search:
     _target_: optuna.samplers.NSGAIISampler
     population_size: 50
   max_parallel_trials: 50
-  early_stopping_rounds: 5
+  early_stopping_rounds: 10

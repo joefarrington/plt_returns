@@ -34,8 +34,6 @@ from plt_returns.simulation.run_replenishment_simopt import (
 # Enable logging
 log = logging.getLogger(__name__)
 
-# TODO: Flip sens and spec in env and here, so we're trying to predict if all units transfused
-
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
@@ -62,27 +60,18 @@ def main(cfg: DictConfig) -> None:
         ]
 
         policy = hydra.utils.instantiate(cfg.policy)
-        # Set sens to 0, equaivalent to OUFO
+
+        # SimOpt rep policy with OUFO allocation
         cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = 0.0
         print(cfg)
         study = run_simopt(cfg, policy)
-        simopt_complete_time = datetime.now()
-        simopt_run_time = simopt_complete_time - start_time
-        log.info(
-            f"Simulation optimization for case {combination.name} complete. Duration: {(simopt_run_time).total_seconds():.2f}s.  Best params: {study.best_params}, mean return: {study.best_value:.4f}"
-        )
         output_info[combination.name] = {}
-        output_info[combination.name]["running_times"] = {}
-        output_info[combination.name]["running_times"][
-            "simopt_run_time"
-        ] = simopt_run_time.total_seconds()
-
         best_params = np.array([v for v in study.best_params.values()]).reshape(
             policy.params_shape
         )
-        output_info[combination.name]["policy_params"] = process_params_for_log(
-            policy, best_params
-        )
+        output_info[combination.name][
+            "policy_params_alloc_oufo"
+        ] = process_params_for_log(policy, best_params)
 
         policy_params = jnp.array(best_params)
 
@@ -94,6 +83,20 @@ def main(cfg: DictConfig) -> None:
         )
         results_oufo["name"] = combination.name
         results_oufo["allocation"] = "OUFO"
+
+        # SimOpt rep policy with OUFO allocation
+        cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = 1.0
+        print(cfg)
+        study = run_simopt(cfg, policy)
+        output_info[combination.name] = {}
+        best_params = np.array([v for v in study.best_params.values()]).reshape(
+            policy.params_shape
+        )
+        output_info[combination.name][
+            "policy_params_alloc_ppm"
+        ] = process_params_for_log(policy, best_params)
+
+        policy_params = jnp.array(best_params)
 
         # Evaluate best replenishment policy under perfect predictive model
         sens = 1.0

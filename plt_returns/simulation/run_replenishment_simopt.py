@@ -170,7 +170,9 @@ def main(cfg: DictConfig) -> None:
     plt.savefig("expiry_pc_heatmap.png")
 
     # Total wastage heatmap
-    pred_return_res["total_wastage_%_mean"] = pred_return_res['slippage_%_mean'] + pred_return_res['expiries_%_mean']
+    pred_return_res["total_wastage_%_mean"] = (
+        pred_return_res["slippage_%_mean"] + pred_return_res["expiries_%_mean"]
+    )
     wastage_pc_heatmap = plot_heatmap(
         pred_return_res,
         "1-specificity",

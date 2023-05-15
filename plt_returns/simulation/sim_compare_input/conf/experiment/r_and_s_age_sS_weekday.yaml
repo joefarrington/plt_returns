@@ -5,14 +5,7 @@ rollout_wrapper:
     max_useful_life: 3
   env_params:
     initial_stock: [0,0,0]
-    age_on_arrival_distributions: 
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
-      - [0.3, 0.2, 0.5]
+    age_on_arrival_distribution: [0.3, 0.2, 0.5]
   
 policy:
   _target_: plt_returns.replenishment_policies.heuristic_policies.ss_policy.sSPolicy
@@ -25,4 +18,4 @@ param_search:
     _target_: optuna.samplers.NSGAIISampler
     population_size: 50
   max_parallel_trials: 50
-  early_stopping_rounds: 5
+  early_stopping_rounds: 10

@@ -1,0 +1,18 @@
+# @package _global_
+
+rollout_wrapper:
+  env_kwargs:
+    max_useful_life: 3
+  env_params:
+    initial_stock: [0,0,0]
+    age_on_arrival_distributions: 
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+      - [0.0, 0.0, 1.0]
+    poisson_mean_demand_pre_return: [18.75, 18.65, 19.6, 18.9, 20.25, 13.6, 14.2]
+    poisson_mean_demand_post_return: [18.75, 18.65, 19.6, 18.9, 20.25, 13.6, 14.2]
+    return_probability: 0.0

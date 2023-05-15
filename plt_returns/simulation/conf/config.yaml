@@ -52,7 +52,14 @@ rollout_wrapper:
     slippage: 0.0
     initial_weekday: 6  # At the first observation, it is Sunday evening
     initial_stock: [0, 0, 0, 0, 0, 0]
-    age_on_arrival_distribution: [0.026, 0.077, 0.173, 0.248, 0.413, 0.063]
+    age_on_arrival_distributions: 
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Mon
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Tue
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Wed
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Thu
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Fri
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Sat
+    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Sun
     variable_order_cost: -650
     fixed_order_cost: -225
     shortage_cost: -3250
