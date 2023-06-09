@@ -1,7 +1,8 @@
-#defaults:
-#  - rollout_wrapper: platelet_bank
-#  - policy: standing_order_policy
-#  - _self_
+defaults:
+  - rollout_wrapper: platelet_bank_defaults
+  - policy: standing_order_policy
+  - param_search: grid_sampler
+  - _self_
 
 exp_name: plt_returns_temp # Default settings correspond to this experiment
 
@@ -11,65 +12,8 @@ hydra:
   run:
     dir: outputs/${exp_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
-#  searchpath:
-#    # Search paths assume that run_replenishment_simopt.py will be run from simopt/
-#    - file://../scenarios/platelet_bank/conf
-
-param_search:
-  sampler:
-    _target_: optuna.samplers.GridSampler
-  max_parallel_trials: 50
-  max_iterations: 100
-  num_rollouts: 400
-  seed: 10
-  search_bounds:
-    all_params:
-      low: 0
-      high: ${rollout_wrapper.env_kwargs.max_order_quantity}
-
 evaluation:
   seed: 78
   num_rollouts: 10000
 
-policy:
-  _target_: plt_returns.replenishment_policies.heuristic_policies.standing_order_policy.StandingOrderPolicy
-  env_id: ${rollout_wrapper.env_id}
-  env_kwargs: ${rollout_wrapper.env_kwargs}
-  env_params: ${rollout_wrapper.env_params}
 
-rollout_wrapper:
-  _target_: plt_returns.utils.rollout.RolloutWrapper
-  env_id: PlateletBank
-  num_env_steps: 365
-  num_burnin_steps: 100
-  env_kwargs:
-    max_useful_life: 6
-    max_order_quantity: 100
-    max_demand: 100
-    return_detailed_info: False
-  env_params:
-    poisson_mean_demand_pre_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
-    poisson_mean_demand_post_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
-    slippage: 0.0
-    initial_weekday: 6  # At the first observation, it is Sunday evening
-    initial_stock: [0, 0, 0, 0, 0, 0]
-    age_on_arrival_distributions: 
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Mon
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Tue
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Wed
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Thu
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Fri
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Sat
-    - [0.026, 0.077, 0.173, 0.248, 0.413, 0.063] # Sun
-    variable_order_cost: -650
-    fixed_order_cost: -225
-    shortage_cost: -3250
-    expiry_cost: -650
-    holding_cost: -130
-    slippage_cost: -650
-    max_steps_in_episode: 365
-    return_probability: 0.08
-    return_prediction_model_sensitivity: 1
-    return_prediction_model_specificity: 1
-    gamma: 1.0
-  return_info: False

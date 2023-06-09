@@ -1,0 +1,28 @@
+_target_: plt_returns.utils.rollout.RolloutWrapper
+env_id: PlateletBank
+num_env_steps: 365
+num_burnin_steps: 100
+env_kwargs:
+  max_useful_life: 6
+  max_order_quantity: 100
+  max_demand: 100
+  return_detailed_info: False
+env_params:
+  poisson_mean_demand_pre_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
+  poisson_mean_demand_post_return: [14.39, 16.65, 13.14, 14.18, 15.41, 9.28, 9.83]
+  slippage: 0.0
+  initial_weekday: -1  # Randomly select for each episode
+  initial_stock: [0, 0, 0, 0, 0, 0]
+  age_on_arrival_distributions: [0.026, 0.077, 0.173, 0.248, 0.413, 0.063]
+  variable_order_cost: -650
+  fixed_order_cost: -225
+  shortage_cost: -3250
+  expiry_cost: -650
+  holding_cost: -130
+  slippage_cost: -650
+  max_steps_in_episode: 365
+  return_probability: 0.08
+  return_prediction_model_sensitivity: 1
+  return_prediction_model_specificity: 1
+  gamma: 1.0
+return_info: False

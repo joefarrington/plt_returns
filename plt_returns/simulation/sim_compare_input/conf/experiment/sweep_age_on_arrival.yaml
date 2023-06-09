@@ -1,0 +1,77 @@
+# @package _global_
+
+defaults:
+  - override /policy: sS_policy
+  - override /param_search: nsgaii_sampler
+
+sweep_over:
+  - name: fresh_1.0
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0., 0., 0., 0., 1.]
+
+  - name: fresh_0.9
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.0, 0., 0.05, 0.29, 0.66]
+
+  - name: fresh_0.8
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.0, 0.03, 0.15, 0.41, 0.41]
+
+  - name: fresh_0.7
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.01, 0.08, 0.26, 0.41, 0.24]
+
+  - name: fresh_0.6
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.02, 0.15, 0.35, 0.35, 0.13]
+
+
+  - name: fresh_0.5
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.06, 0.25, 0.38, 0.25, 0.06]
+
+
+  - name: fresh_0.4
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.13, 0.35, 0.35, 0.25, 0.02]
+
+  - name: fresh_0.3
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.24, 0.41, 0.26, 0.08, 0.01]
+
+
+  - name: fresh_0.2
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.41, 0.41, 0.15, 0.03, 0.00]
+
+
+  - name: fresh_0.1
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [0.66, 0.29, 0.05, 0.00, 0.00]
+
+
+  - name: fresh_0.0
+    updates:
+      rollout_wrapper:
+        env_params:
+          age_on_arrival_distributions: [1.0, 0., 0., 0., 0.]

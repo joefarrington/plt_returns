@@ -1,0 +1,20 @@
+# @package _global_
+
+rollout_wrapper:
+  env_kwargs:
+    max_useful_life: 5
+  env_params:
+    poisson_mean_demand_pre_return: [14.4, 16.7, 13.1, 14.2, 15.4, 9.3, 9.8]
+    poisson_mean_demand_post_return: [14.4, 16.7, 13.1, 14.2, 15.4, 9.3, 9.8]
+    slippage: 0.07 
+    initial_weekday: -1
+    initial_stock: [0, 0, 0, 0, 0]
+    age_on_arrival_distributions: 
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Mon
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Tue
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Wed
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Thu
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Fri
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Sat
+    - [0.2, 0.2, 0.2, 0.2, 0.2] # Sun
+    return_probability: 0.08

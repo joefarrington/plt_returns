@@ -45,7 +45,7 @@ def main(cfg: DictConfig) -> None:
     output_info = {}
     res = pd.DataFrame()
 
-    for combination in cfg.scan_over:
+    for combination in cfg.sweep_over:
         start_time = datetime.now()
         cfg = OmegaConf.merge(cfg, combination.updates)
 

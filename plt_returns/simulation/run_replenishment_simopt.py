@@ -1,24 +1,18 @@
 import hydra
-from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
 import logging
 from datetime import datetime
 import pandas as pd
-import optuna
 from typing import Dict, Tuple, List
 from optuna.study import Study
 import jax
 import jax.numpy as jnp
 import numpy as np
-import gymnax
-import chex
 import matplotlib.pyplot as plt
 from plt_returns.evaluation.evaluate_policy import create_evaluation_output_summary
-from plt_returns.utils.rollout import RolloutWrapper
 from plt_returns.utils.plotting import plot_heatmap
-from viso_jax.policies.heuristic_policy import HeuristicPolicy
 from viso_jax.utils.yaml import to_yaml, from_yaml
-from viso_jax.simopt.run_optuna_simopt import (
+from plt_returns.utils.simopt import (
     param_search_bounds_from_config,
     grid_search_space_from_config,
     simopt_grid_sampler,

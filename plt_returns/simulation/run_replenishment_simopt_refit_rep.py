@@ -323,6 +323,8 @@ def main(cfg: DictConfig) -> None:
                 policy_params = oufo_params
             else:
                 rep_study = run_simopt(cfg, policy, oufo_params_dict, sens, spec)
+                trials_df = rep_study.trials_dataframe()
+                trials_df.to_csv(f"sens_{sens}_spec_{spec}_trials.csv")
                 policy_params = np.array(
                     [v for v in rep_study.best_params.values()]
                 ).reshape(policy.params_shape)

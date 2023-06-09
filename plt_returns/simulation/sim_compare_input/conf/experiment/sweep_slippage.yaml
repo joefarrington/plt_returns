@@ -1,0 +1,58 @@
+# @package _global_
+
+scan_over:
+  - name: slippage_0
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.0
+  - name: slippage_0.1
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.1
+  - name: slippage_0.2
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.2
+  - name: slippage_0.3
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.3
+  - name: slippage_0.4
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.4
+  - name: slippage_0.5
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.5
+  - name: slippage_0.6
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.6
+  - name: slippage_0.7
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.7
+  - name: slippage_0.8
+    updates:
+      rollout_wrapper:
+       env_params:
+          slippage: 0.8
+  - name: slippage_0.9
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 0.9
+  - name: slippage_1.0
+    updates:
+      rollout_wrapper:
+        env_params:
+          slippage: 1.0

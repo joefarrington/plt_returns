@@ -35,6 +35,32 @@ from plt_returns.simulation.run_replenishment_simopt import (
 log = logging.getLogger(__name__)
 
 
+def run_simopt_and_evaluate(
+    rep_policy, cfg, combination_name, alloc_name, sensitivity, specificity
+):
+    cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = sensitivity
+    cfg.rollout_wrapper.env_params.return_prediction_model_specificity = specificity
+    print(cfg)
+    study = run_simopt(cfg, rep_policy)
+    params_output = {}
+    best_params = np.array([v for v in study.best_params.values()]).reshape(
+        rep_policy.params_shape
+    )
+    params_output[f"policy_params_alloc_{alloc_name}"] = process_params_for_log(
+        rep_policy, best_params
+    )
+
+    policy_params = jnp.array(best_params)
+
+    # Evaluate best replenishment policy under OUFO allocation
+    results = evaluation_run_with_simulated_model(
+        sensitivity, specificity, cfg, rep_policy, policy_params
+    )
+    results["name"] = combination_name
+    results["allocation"] = alloc_name
+    return params_output, results
+
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
     """For different combinations of input params, run simulation optimization using Optuna
@@ -43,72 +69,32 @@ def main(cfg: DictConfig) -> None:
     output_info = {}
     res = pd.DataFrame()
 
-    for combination in cfg.scan_over:
+    for combination in cfg.sweep_over:
         start_time = datetime.now()
         cfg = OmegaConf.merge(cfg, combination.updates)
-
-        # Scale the demand based on return rate, which may be changed in combination
-        cfg.rollout_wrapper.env_params.poisson_mean_demand_pre_return = [
-            float(x)
-            for x in np.array(cfg.base_demand.poisson_mean_demand_pre_return)
-            / (1 - cfg.rollout_wrapper.env_params.return_probability)
-        ]
-        cfg.rollout_wrapper.env_params.poisson_mean_demand_post_return = [
-            float(x)
-            for x in np.array(cfg.base_demand.poisson_mean_demand_post_return)
-            / (1 - cfg.rollout_wrapper.env_params.return_probability)
-        ]
-
-        policy = hydra.utils.instantiate(cfg.policy)
-
-        # SimOpt rep policy with OUFO allocation
-        cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = 0.0
-        print(cfg)
-        study = run_simopt(cfg, policy)
         output_info[combination.name] = {}
-        best_params = np.array([v for v in study.best_params.values()]).reshape(
-            policy.params_shape
-        )
-        output_info[combination.name][
-            "policy_params_alloc_oufo"
-        ] = process_params_for_log(policy, best_params)
+        results_list = []
+        rep_policy = hydra.utils.instantiate(cfg.policy)
 
-        policy_params = jnp.array(best_params)
+        for alloc_policy_name, alloc_policy_params in OmegaConf.to_container(
+            cfg.alloc_policies
+        ).items():
+            sensitivity = alloc_policy_params["sensitivity"]
+            specificity = alloc_policy_params["specificity"]
 
-        # Evaluate best replenishment policy under OUFO allocation
-        sens = 0.0
-        spec = 1.0
-        results_oufo = evaluation_run_with_simulated_model(
-            sens, spec, cfg, policy, policy_params
-        )
-        results_oufo["name"] = combination.name
-        results_oufo["allocation"] = "OUFO"
+            # Run simulation optimization and evaluate
+            params_output, results = run_simopt_and_evaluate(
+                rep_policy,
+                cfg,
+                combination.name,
+                alloc_policy_name,
+                sensitivity,
+                specificity,
+            )
+            output_info[combination.name][alloc_policy_name] = params_output
+            results_list.append(results)
 
-        # SimOpt rep policy with OUFO allocation
-        cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = 1.0
-        print(cfg)
-        study = run_simopt(cfg, policy)
-        output_info[combination.name] = {}
-        best_params = np.array([v for v in study.best_params.values()]).reshape(
-            policy.params_shape
-        )
-        output_info[combination.name][
-            "policy_params_alloc_ppm"
-        ] = process_params_for_log(policy, best_params)
-
-        policy_params = jnp.array(best_params)
-
-        # Evaluate best replenishment policy under perfect predictive model
-        sens = 1.0
-        spec = 1.0
-        results_perfect_model = evaluation_run_with_simulated_model(
-            sens, spec, cfg, policy, policy_params
-        )
-
-        results_perfect_model["name"] = combination.name
-        results_perfect_model["allocation"] = "Perfect predictive model"
-
-        res = pd.concat([res, results_oufo, results_perfect_model], ignore_index=True)
+        res = pd.concat([res, *results_list], ignore_index=True)
 
     # Any final logging that combines results across different combinations of input params
     res = res.set_index(["name", "allocation"], drop=True)

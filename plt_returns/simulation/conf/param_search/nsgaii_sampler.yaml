@@ -1,0 +1,12 @@
+sampler:
+    _target_: optuna.samplers.NSGAIISampler
+    population_size: 50
+max_parallel_trials: 50
+early_stopping_rounds: 10
+max_iterations: 100
+num_rollouts: 400
+seed: 10
+search_bounds:
+  all_params:
+    low: 0
+    high: ${rollout_wrapper.env_kwargs.max_order_quantity}
