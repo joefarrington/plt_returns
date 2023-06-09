@@ -4,7 +4,7 @@ sampler:
 max_parallel_trials: 50
 early_stopping_rounds: 10
 max_iterations: 100
-num_rollouts: 400
+num_rollouts: 1000
 seed: 10
 search_bounds:
   all_params:
