@@ -24,7 +24,6 @@ class HeuristicPolicy(VJHeuristicPolicy):
         env_params: Optional[Dict[str, Any]] = {},
         policy_params_filepath: Optional[str] = None,
     ):
-
         # As in utils/rollout.py env_kwargs and env_params arguments are dicts to
         # override the defaults for an environment.
 
@@ -52,3 +51,8 @@ class HeuristicPolicy(VJHeuristicPolicy):
 
         if policy_params_filepath:
             self.policy_params = self.load_policy_params(policy_params_filepath)
+
+    @classmethod
+    def valid_params(cls, params: chex.Array) -> bool:
+        """Return True is proposed params are valid for this policy, False otherwise"""
+        raise NotImplementedError

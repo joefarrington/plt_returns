@@ -32,12 +32,17 @@ class StandingOrderPolicy(HeuristicPolicy):
                 f"No standing order policy defined for Environment ID {env_id}"
             )
 
+    @classmethod
+    def valid_params(cls, params: chex.Array) -> bool:
+        """Order quantity must be greater than or equal to 0"""
+        return jnp.all(jnp.array(params) >= 0)
+
 
 def base_standing_order_policy(
     Q: int, total_stock: int, policy_params: chex.Array
 ) -> chex.Array:
     """Basic standing order policy for all environments"""
-    return Q
+    return jnp.clip(Q, 0)
 
 
 def platelet_bank_standing_order_policy(

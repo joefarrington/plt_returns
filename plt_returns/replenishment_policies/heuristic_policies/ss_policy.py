@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 import numpy as np
 from typing import Optional, List
@@ -35,6 +36,13 @@ class sSPolicy(HeuristicPolicy):
         else:
             raise ValueError(f"No (s,S) policy defined for Environment ID {env_id}")
 
+    @classmethod
+    def valid_params(cls, params: chex.Array) -> bool:
+        """s must be less than S; all must be greater than or equal to zero"""
+        return jax.lax.bitwise_and(
+            jnp.all(params[:, 0] < params[:, 1]), jnp.all(params >= 0)
+        )
+
 
 def base_sS_policy(
     s: int, S: int, total_stock: int, policy_params: chex.Array
@@ -42,7 +50,7 @@ def base_sS_policy(
     """Basic (s, S) policy for all environments"""
     # s should be less than S
     # Enforce that constraint here, order only made when constraint met
-    constraint_met = jnp.all(policy_params[:, 0] < policy_params[:, 1])
+    constraint_met = sSPolicy.valid_params(policy_params)
     return jnp.where((total_stock <= s) & (constraint_met), S - total_stock, 0)
 
 
