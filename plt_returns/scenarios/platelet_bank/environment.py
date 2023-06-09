@@ -12,20 +12,16 @@ from flax import struct
 import numpyro
 import distrax
 
+from omegaconf import OmegaConf
 
-# TODO:
-# PyTree functions at the end like in viso_jax
+# TODO potential future additions that aren't necessary
 # Lead times?
 # Weekday in obs one-hot encoded or not?
 # Truncation information?
 # Separate demand provider-type thing?
-# Use jnp_int to deal with single/double precision flexibly
-# Allow initial weekday to be changed like in Mirjalili env
+
+# TODO:
 # Verification of vars in create_env_params
-# Consistent prob package? Numpyro, distrax, tfp
-# Creating the confusion matrix will slow things down,
-# we should have a flag or a mode for testing with extra info
-# that would include it
 
 
 @struct.dataclass
@@ -90,9 +86,11 @@ class EnvParams:
             0.0,
         ],
         slippage=0.0,
-        initial_weekday: int = 6,  # At the first observation, it is Sunday evening
-        initial_stock: chex.Array = [0, 0, 0],
-        age_on_arrival_distributions: chex.Array = [[0, 0, 1] for i in range(7)],
+        initial_weekday: int = -1,  # Randomly select initial weekday each episode
+        initial_stock: List[int] = [0, 0, 0],
+        age_on_arrival_distributions: List[Union[List[int], int]] = [
+            [0, 0, 1] for i in range(7)
+        ],
         variable_order_cost: int = -650,
         fixed_order_cost: int = -225,
         shortage_cost: int = -3250,
@@ -107,13 +105,21 @@ class EnvParams:
     ):
         # TODO: Check that all inputs are correct types/shapes/in ranges
 
+        if OmegaConf.is_list(age_on_arrival_distributions):
+            age_on_arrival_distributions = OmegaConf.to_container(
+                age_on_arrival_distributions, resolve=True
+            )
+        age_on_arrival_distributions_jax = EnvParams.age_on_arrival_to_jax_array(
+            age_on_arrival_distributions
+        )
+
         return EnvParams(
             jnp.array(poisson_mean_demand_pre_return),
             jnp.array(poisson_mean_demand_post_return),
             slippage,
             initial_weekday,
             jnp.array(initial_stock),
-            jnp.array(age_on_arrival_distributions),
+            age_on_arrival_distributions_jax,
             variable_order_cost,
             fixed_order_cost,
             shortage_cost,
@@ -127,6 +133,34 @@ class EnvParams:
             gamma,
         )
 
+    @classmethod
+    def age_on_arrival_to_jax_array(
+        cls, age_on_arrival_distributions: List
+    ) -> chex.Array:
+        """Convert age_on_arrival_distributions argument to jax array with one row for each
+        day of the week. Accept a single list (which is repeated for each weekday), or a list of 7 lists)
+        """
+        if isinstance(age_on_arrival_distributions, list):
+            # if the first element is also a list, then we assume it's a list of lists
+            if isinstance(age_on_arrival_distributions[0], list):
+                if len(age_on_arrival_distributions) == 7:
+                    return jnp.array(age_on_arrival_distributions)
+                else:
+                    raise ValueError(
+                        "Expected a list of 7 lists. Got a list of {} lists.".format(
+                            len(age_on_arrival_distributions)
+                        )
+                    )
+            else:
+                # if it's a single list, repeat it seven times
+                return jnp.array([age_on_arrival_distributions] * 7)
+        else:
+            raise TypeError(
+                "Expected a list or a list of lists. Got {}.".format(
+                    type(age_on_arrival_distributions)
+                )
+            )
+
 
 class PlateletBankGymnax(environment.Environment):
     # We need to pass in max_useful_life because it affects array shapes
@@ -134,7 +168,7 @@ class PlateletBankGymnax(environment.Environment):
     # We need to pass in max_demand because it affects array shapes
     def __init__(
         self,
-        max_useful_life: int = 6,
+        max_useful_life: int = 3,
         max_order_quantity: int = 100,
         max_demand: int = 100,
         return_detailed_info: bool = False,
@@ -174,8 +208,8 @@ class PlateletBankGymnax(environment.Environment):
             issue_key_pm,
         ) = jax.random.split(key, 11)
 
-        # Update weekday
-        weekday = (state.weekday + 1) % 7
+        # Get the weekday
+        weekday = state.weekday
 
         # Get the age on arrival distribution for the weekday
         age_on_arrival_distribution = params.age_on_arrival_distributions[weekday]
@@ -289,12 +323,19 @@ class PlateletBankGymnax(environment.Environment):
         # Calculate reward
         backorders = backorders_am + backorders_pm
         reward = self._calculate_reward(
-            action, closing_stock, backorders, expiries, slippage, params
+            action,
+            closing_stock,
+            backorders,
+            stock_expiries,
+            expiries_from_returned,
+            slippage,
+            params,
         )
 
         # Update the state
-
-        state = EnvState(closing_stock, to_be_returned, weekday, state.step + 1)
+        state = EnvState(
+            closing_stock, to_be_returned, (weekday + 1) % 7, state.step + 1
+        )
         done = self.is_terminal(state, params)
 
         # More expensive info to compute, so only do it if needed
@@ -314,6 +355,8 @@ class PlateletBankGymnax(environment.Environment):
             "demand_pm": demand_pm,
             "demand": demand_am + demand_pm,
             "expiries": expiries,
+            "stock_expiries": stock_expiries,
+            "expiries_from_returned": expiries_from_returned,
             "shortage": backorders,
             "slippage": slippage,
             "holding": jnp.sum(closing_stock),
@@ -354,6 +397,16 @@ class PlateletBankGymnax(environment.Environment):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         """Performs resetting of environment."""
+        # By default, we start on a random weekday
+        # Otherwise, with fixed burn-in, would always
+        # count return from same weekday
+        weekday = jax.lax.cond(
+            params.initial_weekday == -1,
+            lambda _: jax.random.randint(key, (), 0, 7, dtype=jnp.int32),
+            lambda _: params.initial_weekday.astype(jnp.int32),
+            None,
+        )
+
         state = EnvState(
             stock=params.initial_stock,
             to_be_returned=jnp.zeros_like(params.initial_stock),
@@ -381,7 +434,8 @@ class PlateletBankGymnax(environment.Environment):
         action: int,
         closing_stock: chex.Array,
         backorders: int,
-        expiries: int,
+        stock_expiries: int,
+        expiries_from_returned: int,
         slippage: int,
         params: EnvParams,
     ) -> int:
@@ -392,6 +446,10 @@ class PlateletBankGymnax(environment.Environment):
                 params.holding_cost,
                 params.shortage_cost,
                 params.expiry_cost,
+                # Expiries from returned included one timestep
+                # later than they would be if in stock, so
+                # adjust for discount factor
+                (1 / params.gamma) * params.expiry_cost,
                 params.slippage_cost,
             ]
         )
@@ -401,7 +459,8 @@ class PlateletBankGymnax(environment.Environment):
                 action,
                 jnp.sum(closing_stock),
                 backorders,
-                expiries,
+                stock_expiries,
+                expiries_from_returned,
                 slippage,
             ]
         )
@@ -482,9 +541,9 @@ class PlateletBankGymnax(environment.Environment):
         remaining_demand = demand_info.remaining_demand - 1
         carry_key, order_key = jax.random.split(demand_info.key, 2)
         # Same age of unit from age at arrival distribution
-        issued = numpyro.distributions.Multinomial(
+        issued = distrax.Multinomial(
             total_count=1, probs=demand_info.age_on_arrival_distribution
-        ).sample(key=order_key)
+        ).sample(seed=order_key)
         remaining_stock = demand_info.remaining_stock  # No change, should remain 0
         to_be_returned = demand_info.to_be_returned + jnp.where(
             demand_info.return_samples[idx] == 1,
@@ -590,13 +649,14 @@ class PlateletBankGymnax(environment.Environment):
         service_level = (
             rollout_results["info"]["demand"] - rollout_results["info"]["shortage"]
         ).sum(axis=-1) / rollout_results["info"]["demand"].sum(axis=-1)
+        # Denominator for expiries and slippage should include both routine and emergency orders
+        # So we add in shortage
 
-        expiries = rollout_results["info"]["expiries"].sum(axis=-1) / rollout_results[
-            "action"
-        ].sum(axis=(-1))
-        slippage = rollout_results["info"]["slippage"].sum(axis=-1) / rollout_results[
-            "action"
-        ].sum(axis=(-1))
+        total_received = rollout_results["action"].sum(axis=(-1)) + rollout_results[
+            "info"
+        ]["shortage"].sum(axis=-1)
+        expiries = rollout_results["info"]["expiries"].sum(axis=-1) / total_received
+        slippage = rollout_results["info"]["slippage"].sum(axis=-1) / total_received
 
         holding_units = rollout_results["info"]["holding"].mean(axis=-1)
         demand = rollout_results["info"]["demand"].mean(axis=-1)
