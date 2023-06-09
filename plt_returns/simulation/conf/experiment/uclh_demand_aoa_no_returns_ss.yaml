@@ -1,12 +1,18 @@
 # @package _global_
 
+defaults:
+  - override /policy: sS_policy
+  - override /param_search: nsgaii_sampler
+
+exp_name: uclh_demand_aoa_no_returns_ss
+
 rollout_wrapper:
   env_kwargs:
     max_useful_life: 5
   env_params:
     poisson_mean_demand_pre_return: [13.2, 15.4, 12.1, 13.1, 14.2, 8.6, 9.0]
     poisson_mean_demand_post_return: [13.2, 15.4, 12.1, 13.1, 14.2, 8.6, 9.0]
-    slippage: 0.0
+    slippage: 0.00
     initial_weekday: -1 # Sample each episode
     initial_stock: [0, 0, 0, 0, 0]
     age_on_arrival_distributions: 
@@ -17,4 +23,4 @@ rollout_wrapper:
     - [0.04, 0.03, 0.02, 0.29, 0.62] # Fri
     - [0.00, 0.00, 0.11, 0.28, 0.61] # Sat
     - [0.01, 0.05, 0.19, 0.27, 0.48] # Sun
-    return_probability: 0.0
+    return_probability: 0.00
