@@ -1,6 +1,6 @@
 defaults:
-  - policy: standing_order_policy
-  - param_search: grid_sampler
+  - policy: sS_policy
+  - param_search: nsgaii_sampler
   - rollout_wrapper: platelet_bank_defaults
   - _self_
 

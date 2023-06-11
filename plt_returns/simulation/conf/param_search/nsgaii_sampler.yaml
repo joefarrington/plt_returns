@@ -3,7 +3,7 @@ sampler:
     population_size: 50
 max_parallel_trials: 50
 early_stopping_rounds: 10
-max_iterations: 100
+max_iterations: 200
 num_rollouts: 1000
 seed: 10
 search_bounds:

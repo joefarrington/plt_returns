@@ -1,5 +1,7 @@
 # @package _global_
 
+exp_name: sweep_slippage
+
 scan_over:
   - name: slippage_0
     updates:
