@@ -1,8 +1,12 @@
 # @package _global_
 
+defaults:
+  - override /policy: sS_policy
+  - override /param_search: nsgaii_sampler
+
 exp_name: sweep_slippage
 
-scan_over:
+sweep_over:
   - name: slippage_0
     updates:
       rollout_wrapper:
