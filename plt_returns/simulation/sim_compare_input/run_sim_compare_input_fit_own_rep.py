@@ -72,6 +72,19 @@ def main(cfg: DictConfig) -> None:
     for combination in cfg.sweep_over:
         start_time = datetime.now()
         cfg = OmegaConf.merge(cfg, combination.updates)
+
+        # Scale the demand based on return rate, which may be changed in combination
+        cfg.rollout_wrapper.env_params.poisson_mean_demand_pre_return = [
+            float(x)
+            for x in np.array(cfg.base_demand.poisson_mean_demand_pre_return)
+            / (1 - cfg.rollout_wrapper.env_params.return_probability)
+        ]
+        cfg.rollout_wrapper.env_params.poisson_mean_demand_post_return = [
+            float(x)
+            for x in np.array(cfg.base_demand.poisson_mean_demand_post_return)
+            / (1 - cfg.rollout_wrapper.env_params.return_probability)
+        ]
+
         output_info[combination.name] = {}
         results_list = []
         rep_policy = hydra.utils.instantiate(cfg.policy)
