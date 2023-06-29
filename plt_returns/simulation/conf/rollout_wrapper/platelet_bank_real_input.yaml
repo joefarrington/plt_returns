@@ -8,7 +8,7 @@ env_kwargs:
   max_demand: 100
   return_detailed_info: False
   real_input_filepath: /home/joefarrington/CDT/plt_returns/draft_notebooks/example_real_input.csv
-  start_date: 2021-01-01
+  start_date: 2017-01-01
   period_split_hour: 12
 env_params:
   slippage: 0.07
