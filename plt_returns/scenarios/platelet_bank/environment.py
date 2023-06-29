@@ -411,7 +411,7 @@ class PlateletBankGymnax(environment.Environment):
         state = EnvState(
             stock=params.initial_stock,
             to_be_returned=jnp.zeros_like(params.initial_stock),
-            weekday=params.initial_weekday,
+            weekday=params.weekday,
             step=0,
         )
         return self.get_obs(state), state
@@ -573,7 +573,7 @@ class PlateletBankGymnax(environment.Environment):
     @property
     def name(self) -> str:
         """Environment name."""
-        return "PlateletBankGymnax"
+        return "PlateletBank"
 
     @property
     def num_actions(self) -> int:
