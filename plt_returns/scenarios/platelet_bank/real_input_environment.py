@@ -19,12 +19,12 @@ from plt_returns.scenarios.platelet_bank.environment import (
     PlateletBankGymnax,
 )
 from plt_returns.utils.real_input import real_input_df_to_array
+from omegaconf import OmegaConf
 
 
 @struct.dataclass
 class EnvParams:
     slippage: float
-    initial_weekday: int
     initial_stock: chex.Array
     age_on_arrival_distributions: chex.Array
     variable_order_cost: int
@@ -40,7 +40,6 @@ class EnvParams:
     def create_env_params(
         cls,
         slippage=0.0,
-        initial_weekday: int = 6,  # At the first observation, it is Sunday evening
         initial_stock: List[int] = [0, 0, 0],
         age_on_arrival_distributions: List[Union[List[int], int]] = [
             [0, 0, 1] for i in range(7)
@@ -55,12 +54,17 @@ class EnvParams:
         gamma: float = 1.0,
     ):
         # TODO: Check that all inputs are correct types/shapes/in ranges
+
+        if OmegaConf.is_list(age_on_arrival_distributions):
+            age_on_arrival_distributions = OmegaConf.to_container(
+                age_on_arrival_distributions, resolve=True
+            )
+
         age_on_arrival_distributions_jax = EnvParams.age_on_arrival_to_jax_array(
             age_on_arrival_distributions
         )
         return EnvParams(
             slippage,
-            initial_weekday,
             jnp.array(initial_stock),
             age_on_arrival_distributions_jax,
             variable_order_cost,
