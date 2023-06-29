@@ -411,7 +411,7 @@ class PlateletBankGymnax(environment.Environment):
         state = EnvState(
             stock=params.initial_stock,
             to_be_returned=jnp.zeros_like(params.initial_stock),
-            weekday=params.weekday,
+            weekday=weekday,
             step=0,
         )
         return self.get_obs(state), state
