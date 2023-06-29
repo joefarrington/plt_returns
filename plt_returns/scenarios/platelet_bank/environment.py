@@ -22,6 +22,7 @@ from omegaconf import OmegaConf
 
 # TODO:
 # Verification of vars in create_env_params
+# Flip stock order round to match viso_jax work so oldest stock on RHS of vector
 
 
 @struct.dataclass
