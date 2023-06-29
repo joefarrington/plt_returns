@@ -25,7 +25,9 @@ def create_evaluation_output_summary(
         rollout_results["cum_return"].std()
     )  # One per rollout
 
-    kpi_function = get_kpi_function(cfg.rollout_wrapper.env_id)
+    kpi_function = get_kpi_function(
+        cfg.rollout_wrapper.env_id, **cfg.rollout_wrapper.env_kwargs
+    )
     kpis_per_rollout = kpi_function(rollout_results=rollout_results)
     for k, v in kpis_per_rollout.items():
         eval_output[f"{k}_mean"] = float(v.mean())

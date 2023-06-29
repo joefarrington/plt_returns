@@ -134,10 +134,16 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
         self.real_input_days = pd.to_datetime(
             real_input_df["prediction_point_timestamp"]
         ).dt.date.nunique()
+        self.start_date = start_date
 
     @property
     def default_params(self) -> EnvParams:
         return EnvParams.create_env_params()
+
+    @property
+    def name(self) -> str:
+        """Environment name."""
+        return "PlateletBankGymnaxRealInput"
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: chex.Array, params: EnvParams
@@ -327,6 +333,23 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
             done,
             info,
         )
+
+    # NOTE: Starting with zero inventory here
+    # This is what we did before,
+    def reset_env(
+        self, key: chex.PRNGKey, params: EnvParams
+    ) -> Tuple[chex.Array, EnvState]:
+        """Performs resetting of environment."""
+        # The day of the week of the start date
+        weekday = pd.to_datetime(self.start_date).day_of_week
+
+        state = EnvState(
+            stock=params.initial_stock,
+            to_be_returned=jnp.zeros_like(params.initial_stock),
+            weekday=weekday,
+            step=0,
+        )
+        return self.get_obs(state), state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""

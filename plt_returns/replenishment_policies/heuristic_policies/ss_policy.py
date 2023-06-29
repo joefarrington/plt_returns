@@ -23,7 +23,7 @@ class sSPolicy(HeuristicPolicy):
     ) -> List[str]:
         """Get the row names for the policy parameters - these are the names of the different levels of a
         given paramter, e.g. for different days of the week or different products"""
-        if env_id == "PlateletBank":
+        if env_id == "PlateletBank" or "PlateletBankRealInput":
             return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         else:
             return []
@@ -31,7 +31,7 @@ class sSPolicy(HeuristicPolicy):
     def _get_forward_method(
         self, env_id: str, env: Environment, env_params: EnvParams
     ) -> callable:
-        if env_id == "PlateletBank":
+        if env_id == "PlateletBank" or "PlateletBankRealInput":
             return platelet_bank_sS_policy
         else:
             raise ValueError(f"No (s,S) policy defined for Environment ID {env_id}")

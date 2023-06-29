@@ -3,9 +3,7 @@
 # Modified from commit b9f4795
 from typing import Tuple
 from gymnax.environments.environment import Environment, EnvParams
-from plt_returns.environments import (
-    PlateletBankGymnax,
-)
+from plt_returns.environments import PlateletBankGymnax, PlateletBankGymnaxRealInput
 
 
 def make(env_id: str, **env_kwargs) -> Tuple[Environment, EnvParams]:
@@ -15,12 +13,13 @@ def make(env_id: str, **env_kwargs) -> Tuple[Environment, EnvParams]:
         raise ValueError(f"{env_id} is not in registered gymnax environments.")
     if env_id == "PlateletBank":
         env = PlateletBankGymnax(**env_kwargs)
+    elif env_id == "PlateletBankRealInput":
+        print(env_kwargs)
+        env = PlateletBankGymnaxRealInput(**env_kwargs)
     else:
         raise ValueError("Environment ID is not registered.")
 
     return env, env.default_params
 
 
-registered_envs = [
-    "PlateletBank",
-]
+registered_envs = ["PlateletBank", "PlateletBankRealInput"]
