@@ -132,7 +132,7 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
             real_input_df, max_demand, start_date, period_split_hour
         )  # Add function to utils and import
         self.real_input_days = pd.to_datetime(
-            real_input_df["pred_time"]
+            real_input_df["prediction_point_timestamp"]
         ).dt.date.nunique()
 
     @property

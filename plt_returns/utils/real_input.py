@@ -9,12 +9,12 @@ def real_input_df_to_array(
     # Converting real oberved demand and predictions from trained model
     # into input compatible with our environment
     df["day_counter"] = (
-        pd.to_datetime(df["pred_time"]).dt.date - pd.to_datetime(start_date).date()
+        pd.to_datetime(df["prediction_point_timestamp"]).dt.date
+        - pd.to_datetime(start_date).date()
     ).dt.days
     df["period_counter"] = (
-        pd.to_datetime(df["pred_time"]).dt.hour >= period_split_hour
+        pd.to_datetime(df["prediction_point_timestamp"]).dt.hour >= period_split_hour
     ).astype(int)
-
     days = []
 
     def get_elements(df_row, pred_returned_reversed=False):
@@ -22,8 +22,8 @@ def real_input_df_to_array(
         # so want to have returns first (so will tx oldest units first)
         # If we predict all units will be tx, will issue OUFO so want to have
         # transfusions first (so again will tx oldest units first)
-        total_requested = df_row["total_requested"]
-        total_transfused = df_row["total_transfused"]
+        total_requested = df_row["requested_quantity"]
+        total_transfused = df_row["transfused_quantity"]
         prediction = df_row["prediction"]
 
         limit = min(total_requested, total_transfused)
