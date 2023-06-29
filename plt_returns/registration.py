@@ -14,7 +14,6 @@ def make(env_id: str, **env_kwargs) -> Tuple[Environment, EnvParams]:
     if env_id == "PlateletBank":
         env = PlateletBankGymnax(**env_kwargs)
     elif env_id == "PlateletBankRealInput":
-        print(env_kwargs)
         env = PlateletBankGymnaxRealInput(**env_kwargs)
     else:
         raise ValueError("Environment ID is not registered.")
