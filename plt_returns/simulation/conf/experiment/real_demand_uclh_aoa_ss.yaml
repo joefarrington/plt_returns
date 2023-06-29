@@ -1,0 +1,8 @@
+# @package _global_
+
+defaults:
+  - override /policy: sS_policy
+  - override /rollout_wrapper: platelet_bank_real_input
+
+exp_name: real_demand_uclh_aoa_ss
+
