@@ -584,19 +584,19 @@ class PlateletBankGymnax(environment.Environment):
         """Action space of the environment."""
         if params is None:
             params = self.default_params
-        return spaces.Discrete(params.max_order_quantity + 1)
+        return spaces.Discrete(self.max_order_quantity + 1)
 
     def observation_space(self, params: EnvParams) -> spaces.Box:
         """Observation space of the environment."""
         # [weekday, oldest_stock, ..., freshest_stock]
-        max_stock_by_age = self.max_useful_life * params.max_order_quantity
+        max_stock_by_age = self.max_useful_life * self.max_order_quantity
         low = jnp.array([0] * self.max_useful_life)
         high = jnp.array([6] + [max_stock_by_age] * (self.max_useful_life))
         return spaces.Box(low, high, (self.max_useful_life + 1,), dtype=jnp.int32)
 
     def state_space(self, params: EnvParams) -> spaces.Dict:
         """State space of the environment."""
-        max_stock_by_age = self.max_useful_life * params.max_order_quantity
+        max_stock_by_age = self.max_useful_life * self.max_order_quantity
         return spaces.Dict(
             {
                 "stock": spaces.Box(
