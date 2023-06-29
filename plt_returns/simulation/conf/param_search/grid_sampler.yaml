@@ -2,7 +2,7 @@ sampler:
   _target_: optuna.samplers.GridSampler
 max_parallel_trials: 50
 max_iterations: 100
-num_rollouts: 400
+num_rollouts: 1000
 seed: 10
 search_bounds:
   all_params:
