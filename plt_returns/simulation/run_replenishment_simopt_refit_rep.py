@@ -4,6 +4,7 @@ from omegaconf.dictconfig import DictConfig
 import logging
 from datetime import datetime
 import pandas as pd
+from pathlib import Path
 import optuna
 from typing import Dict, Tuple, List, Optional
 from optuna.study import Study
@@ -13,7 +14,10 @@ import numpy as np
 import gymnax
 import chex
 import matplotlib.pyplot as plt
-from plt_returns.evaluation.evaluate_policy import create_evaluation_output_summary
+from plt_returns.evaluation.evaluate_policy import (
+    create_evaluation_output_summary,
+    create_evaluation_output_df,
+)
 from plt_returns.utils.rollout import RolloutWrapper
 from plt_returns.utils.plotting import plot_heatmap
 from viso_jax.policies.heuristic_policy import HeuristicPolicy
@@ -210,13 +214,16 @@ def evaluation_run_with_simulated_model(
         jax.random.PRNGKey(cfg.evaluation.seed), cfg.evaluation.num_rollouts
     )
     rollout_results = rollout_wrapper.batch_rollout(rng_eval, policy_params)
-    evaluation_output = create_evaluation_output_summary(cfg, rollout_results)
-    evaluation_output["sensitivity"] = sensitivity
-    evaluation_output["specificity"] = specificity
-    evaluation_output["1-specificity"] = round(
+    evaluation_output = create_evaluation_output_df(cfg, rollout_results)
+    evaluation_output_summary_row = create_evaluation_output_summary(
+        cfg, rollout_results
+    )
+    evaluation_output_summary_row["sensitivity"] = sensitivity
+    evaluation_output_summary_row["specificity"] = specificity
+    evaluation_output_summary_row["1-specificity"] = round(
         1 - specificity, 2
     )  # Assume we're never interested in more than 2dp
-    return evaluation_output
+    return evaluation_output, evaluation_output_summary_row
 
 
 def run_simopt(
@@ -292,6 +299,14 @@ def main(cfg: DictConfig) -> None:
     and evaluate the policy using the best parameters on a separate set of rollouts"""
     start_time = datetime.now()
 
+    # Create a directory to store the simopt outputs for each sens/spec combination
+    simopt_trials_path = Path("./simopt_trials")
+    simopt_trials_path.mkdir(parents=True, exist_ok=True)
+
+    # Create a directory to store the evaluation outputs for each sens/spec combination
+    evaluation_output_path = Path("./evaluation_output")
+    evaluation_output_path.mkdir(parents=True, exist_ok=True)
+
     output_info = {}
     policy = hydra.utils.instantiate(cfg.policy)
 
@@ -313,8 +328,8 @@ def main(cfg: DictConfig) -> None:
 
     # For each assume level of sensitivity and specificity, run evaluation
 
-    sensitivities = np.arange(0, 1.1, 0.1).round(2)
-    specificities = np.arange(0, 1.1, 0.1).round(2)
+    sensitivities = hydra.utils.instantiate(cfg.metric_ranges.sensitivity).round(2)
+    specificities = hydra.utils.instantiate(cfg.metric_ranges.specificity).round(2)
 
     pred_return_res = pd.DataFrame()
     for sens in sensitivities:
@@ -324,26 +339,47 @@ def main(cfg: DictConfig) -> None:
             else:
                 rep_study = run_simopt(cfg, policy, oufo_params_dict, sens, spec)
                 trials_df = rep_study.trials_dataframe()
-                trials_df.to_csv(f"sens_{sens}_spec_{spec}_trials.csv")
+                cur_trials_path = (
+                    simopt_trials_path / f"sens_{sens}_spec_{spec}_trials.csv"
+                )
+                trials_df.to_csv(cur_trials_path)
                 policy_params = np.array(
                     [v for v in rep_study.best_params.values()]
                 ).reshape(policy.params_shape)
             labelled_params_for_df = process_params_for_df(policy, policy_params)
             policy_params = jnp.array(policy_params)
 
-            evaluation_output = evaluation_run_with_simulated_model(
+            (
+                evaluation_output,
+                evaluation_output_summary_row,
+            ) = evaluation_run_with_simulated_model(
                 sens, spec, cfg, policy, policy_params
             )
+            # Save down evaluation output to csv
+            cur_eval_path = (
+                evaluation_output_path
+                / f"sens_{sens}_spec_{spec}_evaluation_output.csv"
+            )
+            evaluation_output.to_csv(cur_eval_path)
+
             new_row = pd.DataFrame(
-                labelled_params_for_df | evaluation_output, index=[0]
+                labelled_params_for_df | evaluation_output_summary_row, index=[0]
             )
             # Add to res dataframe
             pred_return_res = pd.concat([pred_return_res, new_row], ignore_index=True)
 
-    pred_return_res["1-specificity"] = (1 - pred_return_res["specificity"]).round(1)
+    pred_return_res["1-specificity"] = (1 - pred_return_res["specificity"]).round(2)
+
+    # pred_return_res["total_wastage_%_mean"] = (
+    #    pred_return_res["slippage_%_mean"] + pred_return_res["expiries_%_mean"]
+    # )
+
+    performance_by_sens_spec = pred_return_res.set_index(
+        ["sensitivity", "specificity"], drop=True
+    )
+    performance_by_sens_spec.to_csv("performance_by_sens_spec.csv")
 
     # Expiry heatmap
-    # TODO: Could do one that combines expiries and slippage as total wastage
     expiry_pc_heatmap = plot_heatmap(
         pred_return_res,
         "1-specificity",
@@ -355,9 +391,7 @@ def main(cfg: DictConfig) -> None:
     plt.savefig("expiry_pc_heatmap.png")
 
     # Total wastage heatmap
-    pred_return_res["total_wastage_%_mean"] = (
-        pred_return_res["slippage_%_mean"] + pred_return_res["expiries_%_mean"]
-    )
+
     wastage_pc_heatmap = plot_heatmap(
         pred_return_res,
         "1-specificity",

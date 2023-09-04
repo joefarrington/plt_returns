@@ -33,3 +33,18 @@ def create_evaluation_output_summary(
         eval_output[f"{k}_mean"] = float(v.mean())
         eval_output[f"{k}_std"] = float(v.std())
     return eval_output
+
+
+def create_evaluation_output_df(
+    cfg: DictConfig, rollout_results: Dict[str, chex.Array]
+) -> pd.DataFrame:
+    """Create a dataframe with one row per evaluation rollout, once column per metric including KPIs"""
+    kpi_function = get_kpi_function(
+        cfg.rollout_wrapper.env_id, **cfg.rollout_wrapper.env_kwargs
+    )
+    eval_output = kpi_function(rollout_results=rollout_results)
+    eval_output["daily_undiscounted_reward"] = rollout_results["reward"].mean(axis=-1)
+    eval_output["cumulative_discounted_return"] = rollout_results[
+        "cum_return"
+    ].squeeze()
+    return pd.DataFrame(eval_output)

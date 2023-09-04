@@ -668,11 +668,14 @@ class PlateletBankGymnax(environment.Environment):
             "service_level_%": service_level * 100,
             "expiries_%": expiries * 100,
             "slippage_%": slippage * 100,
+            "total_wastage_%": (expiries + slippage) * 100,
             "holding_units": holding_units,
             "demand": demand,
             "order_quantity": order_q,
             "shortage_units": rollout_results["info"]["shortage"].mean(axis=-1),
             "expiries_units": rollout_results["info"]["expiries"].mean(axis=-1),
             "slippage_units": rollout_results["info"]["slippage"].mean(axis=-1),
+            "total_wastage_units": rollout_results["info"]["expiries"].mean(axis=-1)
+            + rollout_results["info"]["slippage"].mean(axis=-1),
             "order_made_%": order_made,
         }

@@ -12,6 +12,18 @@ hydra:
   run:
     dir: outputs/${exp_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
+metric_ranges:
+  sensitivity:
+    _target_: numpy.arange
+    start: 0.0
+    stop: 1.1
+    step: 0.1
+  specificity:
+    _target_: numpy.arange
+    start: 0.0
+    stop: 1.1
+    step: 0.1
+
 evaluation:
   seed: 78
   num_rollouts: 10000
