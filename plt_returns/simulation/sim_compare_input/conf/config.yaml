@@ -2,6 +2,7 @@ defaults:
   - policy: standing_order_policy
   - param_search: grid_sampler
   - rollout_wrapper: platelet_bank_defaults
+  - demand: uclh_tx 
   - _self_
 
 exp_name: plt_returns_temp # Default settings correspond to this experiment
@@ -20,11 +21,14 @@ evaluation:
   seed: 78
   num_rollouts: 10000
 
+# Base demand is UCLH TX, gets adjusted based on return rate
+# Crucial for the sweep over the return rate so that demand for
+# units that will be transfused remains the same
 base_demand:
-  poisson_mean_demand_pre_return: [13.2, 15.3 , 12.1, 13.0, 14.2,  8.5,  9.0]
-  poisson_mean_demand_post_return: [13.2, 15.3 , 12.1, 13.0, 14.2,  8.5,  9.0]
+  poisson_mean_demand_pre_return: ${demand.poisson_mean_demand_pre_return}
+  poisson_mean_demand_post_return: ${demand.poisson_mean_demand_post_return}
 
-alloc_policies:
+issue_policies:
   oufo:
     sensitivity: 0.0
     specificity: 1.0

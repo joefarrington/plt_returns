@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 
 
 def run_simopt_and_evaluate(
-    rep_policy, cfg, combination_name, alloc_name, sensitivity, specificity
+    rep_policy, cfg, combination_name, issue_name, sensitivity, specificity
 ):
     cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = sensitivity
     cfg.rollout_wrapper.env_params.return_prediction_model_specificity = specificity
@@ -46,24 +46,24 @@ def run_simopt_and_evaluate(
     best_params = np.array([v for v in study.best_params.values()]).reshape(
         rep_policy.params_shape
     )
-    params_output[f"policy_params_alloc_{alloc_name}"] = process_params_for_log(
+    params_output[f"policy_params_issue_{issue_name}"] = process_params_for_log(
         rep_policy, best_params
     )
 
     policy_params = jnp.array(best_params)
 
-    # Evaluate best replenishment policy under OUFO allocation
+    # Evaluate best replenishment policy under OUFO issuing
     results = evaluation_run_with_simulated_model(
         sensitivity, specificity, cfg, rep_policy, policy_params
     )
     results["name"] = combination_name
-    results["allocation"] = alloc_name
+    results["issuing"] = issue_name
     return params_output, results
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
-    """For different combinations of input params, and each specified allocation policy
+    """For different combinations of input params, and each specified issuing policy
     run simulation optimization using Optuna to find the best parameters for  the replenishment
     policy and evaluate the policy using the best parameters on a separate set of rollouts
     """
@@ -90,28 +90,28 @@ def main(cfg: DictConfig) -> None:
         results_list = []
         rep_policy = hydra.utils.instantiate(cfg.policy)
 
-        for alloc_policy_name, alloc_policy_params in OmegaConf.to_container(
-            cfg.alloc_policies
+        for issue_policy_name, issue_policy_params in OmegaConf.to_container(
+            cfg.issue_policies
         ).items():
-            sensitivity = alloc_policy_params["sensitivity"]
-            specificity = alloc_policy_params["specificity"]
+            sensitivity = issue_policy_params["sensitivity"]
+            specificity = issue_policy_params["specificity"]
 
             # Run simulation optimization and evaluate
             params_output, results = run_simopt_and_evaluate(
                 rep_policy,
                 cfg,
                 combination.name,
-                alloc_policy_name,
+                issue_policy_name,
                 sensitivity,
                 specificity,
             )
-            output_info[combination.name][alloc_policy_name] = params_output
+            output_info[combination.name][issue_policy_name] = params_output
             results_list.append(results)
 
         res = pd.concat([res, *results_list], ignore_index=True)
 
     # Any final logging that combines results across different combinations of input params
-    res = res.set_index(["name", "allocation"], drop=True)
+    res = res.set_index(["name", "issuing"], drop=True)
     res.to_csv("results.csv")
     log.info("Final results saved")
 
