@@ -1,0 +1,10 @@
+
+# OUFO only (sens=0, spec=1)
+sensitivity:
+  _target_: numpy.array
+  object:
+    - 0.0
+specificity:
+  _target_: numpy.array
+  object:
+    - 1.0

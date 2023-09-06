@@ -1,0 +1,10 @@
+sensitivity:
+  _target_: numpy.arange
+  start: 0.0
+  stop: 1.1
+  step: 0.1
+specificity:
+  _target_: numpy.arange
+  start: 0.0
+  stop: 1.1
+  step: 0.1

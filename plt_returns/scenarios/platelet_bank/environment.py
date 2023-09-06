@@ -5,7 +5,6 @@ import jax
 import jax.numpy as jnp
 from jax import lax
 
-import gymnax
 from gymnax.environments import environment, spaces
 
 from flax import struct
@@ -14,15 +13,8 @@ import distrax
 
 from omegaconf import OmegaConf
 
-# TODO potential future additions that aren't necessary
-# Lead times?
-# Weekday in obs one-hot encoded or not?
-# Truncation information?
-# Separate demand provider-type thing?
-
 # TODO:
-# Verification of vars in create_env_params
-# Flip stock order round to match viso_jax work so oldest stock on RHS of vector
+# Flip stock order round to match viso_jax work so oldest stock on RHS of vector - made changes after git commit on 2023-09-04, configs still to be changed
 
 
 @struct.dataclass
@@ -104,8 +96,6 @@ class EnvParams:
         return_prediction_model_specificity: float = 1,
         gamma: float = 1.0,
     ):
-        # TODO: Check that all inputs are correct types/shapes/in ranges
-
         if OmegaConf.is_list(age_on_arrival_distributions):
             age_on_arrival_distributions = OmegaConf.to_container(
                 age_on_arrival_distributions, resolve=True
@@ -136,16 +126,19 @@ class EnvParams:
 
     @classmethod
     def age_on_arrival_to_jax_array(
-        cls, age_on_arrival_distributions: List
+        cls, age_on_arrival_distributions: List[float]
     ) -> chex.Array:
         """Convert age_on_arrival_distributions argument to jax array with one row for each
         day of the week. Accept a single list (which is repeated for each weekday), or a list of 7 lists)
         """
+        # FOR NOW, revierse the list here rather than in each config for simplicity
         if isinstance(age_on_arrival_distributions, list):
             # if the first element is also a list, then we assume it's a list of lists
             if isinstance(age_on_arrival_distributions[0], list):
                 if len(age_on_arrival_distributions) == 7:
-                    return jnp.array(age_on_arrival_distributions)
+                    return jnp.array(
+                        [x[::-1] for x in age_on_arrival_distributions]
+                    )  # TODO: Change when configs changed
                 else:
                     raise ValueError(
                         "Expected a list of 7 lists. Got a list of {} lists.".format(
@@ -154,7 +147,9 @@ class EnvParams:
                     )
             else:
                 # if it's a single list, repeat it seven times
-                return jnp.array([age_on_arrival_distributions] * 7)
+                return jnp.array(
+                    [age_on_arrival_distributions[::-1]] * 7
+                )  # TODO Change when configs changed
         else:
             raise TypeError(
                 "Expected a list or a list of lists. Got {}.".format(
@@ -177,7 +172,7 @@ class PlateletBankGymnax(environment.Environment):
         super().__init__()
         self.max_useful_life = max_useful_life
         self.max_order_quantity = max_order_quantity
-        self.max_demand = max_demand  # May demand applies to both am and pm, should be set quite high; sampled demand clipped using this value
+        self.max_demand = max_demand  # Max demand applies separately to both am and pm, should be set quite high; sampled demand clipped using this value
         if return_detailed_info:
             self._get_detailed_info_fn = self._get_detailed_info
         else:
@@ -262,14 +257,15 @@ class PlateletBankGymnax(environment.Environment):
         ) = self._fill_demand(demand_info_am)
 
         ## Returns come back into stock
-        # NEW at this point we find out how many units expired while out on the wards
+        # At this point we find out how many units expired while out on the wards
         returned_units = state.to_be_returned
-        expiries_from_returned = returned_units[0]
+        expiries_from_returned = returned_units[self.max_useful_life - 1]
         slippage_units = numpyro.distributions.Binomial(
-            total_count=returned_units[1 : self.max_useful_life], probs=params.slippage
+            total_count=returned_units[0 : self.max_useful_life - 1],
+            probs=params.slippage,
         ).sample(key=slippage_key)
         back_in_stock_from_returned = jnp.hstack(
-            [returned_units[1 : self.max_useful_life] - slippage_units, 0]
+            [returned_units[0 : self.max_useful_life - 1] - slippage_units, 0]
         )  # Aging the units being returned
         opening_stock_pm = closing_stock_am + back_in_stock_from_returned
 
@@ -314,12 +310,12 @@ class PlateletBankGymnax(environment.Environment):
 
         # Age stock and calculate expiries
         to_be_returned = to_be_returned_am + to_be_returned_pm
-        stock_expiries = closing_stock[0]
+        stock_expiries = closing_stock[self.max_useful_life - 1]
         expiries = stock_expiries + expiries_from_returned
         slippage = slippage_units.sum()
-        closing_stock = jnp.hstack([closing_stock[1 : self.max_useful_life], 0])
+        closing_stock = jnp.hstack([0, closing_stock[0 : self.max_useful_life - 1]])
 
-        # Note now we don;t age stock in to be returned, because expiries for those units
+        # We don't age stock in to be returned, because expiries for those units
         # accounted for on the day returned
         # Calculate reward
         backorders = backorders_am + backorders_pm
@@ -392,8 +388,6 @@ class PlateletBankGymnax(environment.Environment):
             info,
         )
 
-    # NOTE: Starting with zero inventory here
-    # This is what we did before,
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
@@ -467,7 +461,10 @@ class PlateletBankGymnax(environment.Environment):
         )
         return jnp.dot(costs, values)
 
-    def _fill_demand(self, initial_demand_info):
+    def _fill_demand(
+        self, initial_demand_info: DemandInfo
+    ) -> Tuple[chex.Array, int, chex.Array, chex.Array, chex.Array]:
+        """Fill the demand, and determine the backorders due to shortage and the units to be returned"""
         total_stock = jnp.sum(initial_demand_info.remaining_stock)
         backorders = jnp.where(
             initial_demand_info.total_demand > total_stock,
@@ -496,13 +493,15 @@ class PlateletBankGymnax(environment.Environment):
             to_be_returned_from_emergency_orders,
         )
 
-    def _remaining_demand_and_stock(self, demand_info):
-        # Only continue if there is both remaining demand to fill and stock to fill it
+    def _remaining_demand_and_stock(self, demand_info: DemandInfo) -> bool:
+        """Determine whether to continue filled demand.
+        Only continue if there is both remaining demand to fill and stock to fill it"""
         return (demand_info.remaining_demand > 0) & (
             demand_info.remaining_stock.sum() > 0
         )
 
-    def _issue_one_unit(self, demand_info):
+    def _issue_one_unit(self, demand_info: DemandInfo) -> DemandInfo:
+        """Issue a single unit following the issuing policy"""
         idx = demand_info.total_demand - demand_info.remaining_demand
         remaining_demand = demand_info.remaining_demand - 1
         # Identify age of unit to be issued
@@ -534,10 +533,14 @@ class PlateletBankGymnax(environment.Environment):
             demand_info.key,
         )
 
-    def _remaining_demand(self, demand_info):
+    def _remaining_demand(self, demand_info: DemandInfo) -> bool:
+        """Check if there is demand remaining to be filled"""
         return demand_info.remaining_demand > 0
 
-    def _emergency_order_and_issue_one_unit(self, demand_info):
+    def _emergency_order_and_issue_one_unit(
+        self, demand_info: DemandInfo
+    ) -> DemandInfo:
+        """Place an emergency order if there is a shortage"""
         idx = demand_info.total_demand - demand_info.remaining_demand
         remaining_demand = demand_info.remaining_demand - 1
         carry_key, order_key = jax.random.split(demand_info.key, 2)
@@ -562,10 +565,12 @@ class PlateletBankGymnax(environment.Environment):
             carry_key,
         )
 
-    def _oufo(self, remaining_stock):
+    def _yufo(self, remaining_stock: chex.Array) -> int:
+        """Determine the index of the youngest unit in the remaining stock"""
         return jnp.where(remaining_stock > 0, True, False).argmax()
 
-    def _yufo(self, remaining_stock):
+    def _oufo(self, remaining_stock: chex.Array) -> int:
+        """Determine the index of the oldest unit in the remaining stock"""
         return (self.max_useful_life - 1) - jnp.where(remaining_stock > 0, True, False)[
             ::-1
         ].argmax()
@@ -635,6 +640,7 @@ class PlateletBankGymnax(environment.Environment):
         return_samples_pm: chex.Array,
         return_pred_samples_pm: chex.Array,
     ) -> Dict[str, chex.Array]:
+        """Compute detailed info for testing purposes"""
         return {
             "cm_am": self._build_confusion_matrix(
                 demand_am, return_samples_am, return_pred_samples_am

@@ -1,12 +1,9 @@
-import jax.numpy as jnp
 import numpy as np
 from typing import Optional, Dict, Any, List
 import chex
 import pandas as pd
-import viso_jax
 import plt_returns
 from viso_jax.utils.yaml import from_yaml
-from gymnax.environments.environment import Environment
 from viso_jax.policies.heuristic_policy import (
     HeuristicPolicy as VJHeuristicPolicy,
 )
@@ -54,5 +51,5 @@ class HeuristicPolicy(VJHeuristicPolicy):
 
     @classmethod
     def valid_params(cls, params: chex.Array) -> bool:
-        """Return True is proposed params are valid for this policy, False otherwise"""
+        """Return True if proposed params are valid for this policy, False otherwise"""
         raise NotImplementedError

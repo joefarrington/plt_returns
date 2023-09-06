@@ -1,10 +1,7 @@
 import jax
 import jax.numpy as jnp
-import numpy as np
-from typing import Optional, List
-from functools import partial
+from typing import List
 import chex
-import pandas as pd
 from viso_jax.utils.yaml import from_yaml
 from plt_returns.replenishment_policies.heuristic_policy import HeuristicPolicy
 from gymnax.environments.environment import Environment, EnvParams
@@ -31,6 +28,8 @@ class sSPolicy(HeuristicPolicy):
     def _get_forward_method(
         self, env_id: str, env: Environment, env_params: EnvParams
     ) -> callable:
+        """Get the forward method for the policy - this is the function that returns the action"""
+        # Same policy valid for the env with simulated and real demand/returns
         if env_id == "PlateletBank" or "PlateletBankRealInput":
             return platelet_bank_sS_policy
         else:

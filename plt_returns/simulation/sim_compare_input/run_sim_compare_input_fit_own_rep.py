@@ -63,9 +63,10 @@ def run_simopt_and_evaluate(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
-    """For different combinations of input params, run simulation optimization using Optuna
-    to find the best parameters for a policy and evaluate the policy using the best parameters
-    on a separate set of rollouts"""
+    """For different combinations of input params, and each specified allocation policy
+    run simulation optimization using Optuna to find the best parameters for  the replenishment
+    policy and evaluate the policy using the best parameters on a separate set of rollouts
+    """
     output_info = {}
     res = pd.DataFrame()
 

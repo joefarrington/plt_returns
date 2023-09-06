@@ -2,17 +2,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import Dict
 
 
 def plot_heatmap(
-    df,
-    x_col,
-    y_col,
-    val_col,
-    title,
-    subplots_kwargs={},
-    heatmap_kwargs={},
-):
+    df: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    val_col: str,
+    title: str,
+    subplots_kwargs: Dict = {},
+    heatmap_kwargs: Dict = {},
+) -> plt.Figure:
+    """Plot a seaborn heatmap from a dataframe"""
     to_plot = df.pivot(index=y_col, columns=x_col, values=val_col)
     to_plot = to_plot.sort_index(ascending=False)
 

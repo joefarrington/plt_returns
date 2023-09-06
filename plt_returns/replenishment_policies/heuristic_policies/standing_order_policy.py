@@ -25,7 +25,8 @@ class StandingOrderPolicy(HeuristicPolicy):
         self, env_id: str, env: Environment, env_params: EnvParams
     ) -> callable:
         """Get the forward method for the policy - this is the function that returns the action"""
-        if env_id == "PlateletBank":
+        # Same policy valid for the env with simulated and real demand/returns
+        if env_id == "PlateletBank" or "PlateletBankRealInput":
             return platelet_bank_standing_order_policy
         else:
             raise NotImplementedError(

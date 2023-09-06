@@ -3,6 +3,7 @@
 defaults:
   - override /policy: sS_policy
   - override /param_search: nsgaii_sampler
+  - override /metric_ranges: oufo_only
 
 exp_name: uclh_demand_aoa_no_returns_ss
 

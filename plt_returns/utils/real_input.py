@@ -1,12 +1,17 @@
 import pandas as pd
 import numpy as np
 import jax.numpy as jnp
+import chex
 
 
 def real_input_df_to_array(
-    df, max_demand, start_date="2021-01-01", period_split_hour=12
-):
-    # Converting real oberved demand and predictions from trained model
+    df: pd.DataFrame,
+    max_demand: int,
+    start_date: str = "2017-01-01",
+    period_split_hour: int = 12,
+) -> chex.Array:
+    """Convert real demand data in a pandas DataFrame into an array we can use in our environment"""
+    # Converting real observed demand and predictions from trained model
     # into input compatible with our environment
     df["day_counter"] = (
         pd.to_datetime(df["prediction_point_timestamp"]).dt.date

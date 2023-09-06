@@ -1,4 +1,6 @@
 # @package _global_
+defaults:
+  - override /metric_ranges: oufo_only
 
 exp_name: uclh_demand_aoa_no_returns_q
 

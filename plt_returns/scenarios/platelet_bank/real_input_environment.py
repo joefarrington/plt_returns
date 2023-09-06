@@ -21,6 +21,9 @@ from plt_returns.scenarios.platelet_bank.environment import (
 from plt_returns.utils.real_input import real_input_df_to_array
 from omegaconf import OmegaConf
 
+# TODO:
+# Flip stock order round to match viso_jax work so oldest stock on RHS of vector - check consistent with environment.py
+
 
 @struct.dataclass
 class EnvParams:
@@ -53,8 +56,6 @@ class EnvParams:
         max_steps_in_episode: int = 365,
         gamma: float = 1.0,
     ):
-        # TODO: Check that all inputs are correct types/shapes/in ranges
-
         if OmegaConf.is_list(age_on_arrival_distributions):
             age_on_arrival_distributions = OmegaConf.to_container(
                 age_on_arrival_distributions, resolve=True
@@ -79,16 +80,19 @@ class EnvParams:
 
     @classmethod
     def age_on_arrival_to_jax_array(
-        cls, age_on_arrival_distributions: List
+        cls, age_on_arrival_distributions: List[float]
     ) -> chex.Array:
         """Convert age_on_arrival_distributions argument to jax array with one row for each
         day of the week. Accept a single list (which is repeated for each weekday), or a list of 7 lists)
         """
+        # FOR NOW, revierse the list here rather than in each config for simplicity
         if isinstance(age_on_arrival_distributions, list):
             # if the first element is also a list, then we assume it's a list of lists
             if isinstance(age_on_arrival_distributions[0], list):
                 if len(age_on_arrival_distributions) == 7:
-                    return jnp.array(age_on_arrival_distributions)
+                    return jnp.array(
+                        [x[::-1] for x in age_on_arrival_distributions]
+                    )  # TODO: Change when configs changed
                 else:
                     raise ValueError(
                         "Expected a list of 7 lists. Got a list of {} lists.".format(
@@ -97,7 +101,9 @@ class EnvParams:
                     )
             else:
                 # if it's a single list, repeat it seven times
-                return jnp.array([age_on_arrival_distributions] * 7)
+                return jnp.array(
+                    [age_on_arrival_distributions[::-1]] * 7
+                )  # TODO Change when configs changed
         else:
             raise TypeError(
                 "Expected a list or a list of lists. Got {}.".format(
@@ -117,13 +123,13 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
         max_demand: int = 100,
         return_detailed_info: bool = False,
         real_input_filepath: str = None,
-        start_date: str = "2021-01-01",  # TODO update this
+        start_date: str = "2017-01-01",
         period_split_hour: int = 12,
     ):
         super().__init__()
         self.max_useful_life = max_useful_life
         self.max_order_quantity = max_order_quantity
-        self.max_demand = max_demand  # May demand applies to both am and pm, should be set quite high; sampled demand clipped using this value
+        self.max_demand = max_demand  # Max demand applies to both am and pm, should be set quite high; demand clipped using this value
         if return_detailed_info:
             self._get_detailed_info_fn = self._get_detailed_info
         else:
@@ -216,14 +222,15 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
         ) = self._fill_demand(demand_info_am)
 
         ## Returns come back into stock
-        # NEW at this point we find out how many units expired while out on the wards
+        # At this point we find out how many units expired while out on the wards
         returned_units = state.to_be_returned
-        expiries_from_returned = returned_units[0]
+        expiries_from_returned = returned_units[self.max_useful_life - 1]
         slippage_units = numpyro.distributions.Binomial(
-            total_count=returned_units[1 : self.max_useful_life], probs=params.slippage
+            total_count=returned_units[0 : self.max_useful_life - 1],
+            probs=params.slippage,
         ).sample(key=slippage_key)
         back_in_stock_from_returned = jnp.hstack(
-            [returned_units[1 : self.max_useful_life] - slippage_units, 0]
+            [returned_units[0 : self.max_useful_life - 1] - slippage_units, 0]
         )  # Aging the units being returned
         opening_stock_pm = closing_stock_am + back_in_stock_from_returned
 
@@ -259,12 +266,12 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
 
         # Age stock and calculate expiries
         to_be_returned = to_be_returned_am + to_be_returned_pm
-        stock_expiries = closing_stock[0]
+        stock_expiries = closing_stock[self.max_useful_life - 1]
         expiries = stock_expiries + expiries_from_returned
         slippage = slippage_units.sum()
-        closing_stock = jnp.hstack([closing_stock[1 : self.max_useful_life], 0])
+        closing_stock = jnp.hstack([0, closing_stock[0 : self.max_useful_life - 1]])
 
-        # Note now we don;t age stock in to be returned, because expiries for those units
+        # We don't age stock in to be returned, because expiries for those units
         # accounted for on the day returned
         # Calculate reward
         backorders = backorders_am + backorders_pm
@@ -338,8 +345,6 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
             info,
         )
 
-    # NOTE: Starting with zero inventory here
-    # This is what we did before,
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
