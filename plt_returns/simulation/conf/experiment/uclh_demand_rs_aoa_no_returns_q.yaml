@@ -1,17 +1,12 @@
 # @package _global_
 defaults:
   - override /metric_ranges: oufo_only
+  - override /demand: uclh_tx
+  - override /stock: rs
 
 exp_name: uclh_demand_rs_aoa_no_returns_q
 
 rollout_wrapper:
-  env_kwargs:
-    max_useful_life: 3
   env_params:
-    poisson_mean_demand_pre_return: [13.2, 15.4, 12.1, 13.1, 14.2, 8.6, 9.0]
-    poisson_mean_demand_post_return: [13.2, 15.4, 12.1, 13.1, 14.2, 8.6, 9.0]
     slippage: 0.00
-    initial_weekday: -1 # Sample each episode
-    initial_stock: [0, 0, 0]
-    age_on_arrival_distributions: [0.3, 0.2, 0.5]
     return_probability: 0.00

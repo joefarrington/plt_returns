@@ -21,9 +21,6 @@ from plt_returns.scenarios.platelet_bank.environment import (
 from plt_returns.utils.real_input import real_input_df_to_array
 from omegaconf import OmegaConf
 
-# TODO:
-# Flip stock order round to match viso_jax work so oldest stock on RHS of vector - check consistent with environment.py
-
 
 @struct.dataclass
 class EnvParams:
@@ -91,7 +88,7 @@ class EnvParams:
             if isinstance(age_on_arrival_distributions[0], list):
                 if len(age_on_arrival_distributions) == 7:
                     return jnp.array(
-                        [x[::-1] for x in age_on_arrival_distributions]
+                        [x for x in age_on_arrival_distributions]
                     )  # TODO: Change when configs changed
                 else:
                     raise ValueError(
@@ -102,7 +99,7 @@ class EnvParams:
             else:
                 # if it's a single list, repeat it seven times
                 return jnp.array(
-                    [age_on_arrival_distributions[::-1]] * 7
+                    [age_on_arrival_distributions] * 7
                 )  # TODO Change when configs changed
         else:
             raise TypeError(

@@ -1,5 +1,7 @@
 defaults:
   - rollout_wrapper: platelet_bank_defaults
+  - stock: uclh
+  - demand: uclh_txr
   - policy: standing_order_policy
   - param_search: grid_sampler
   - metric_ranges: sens_spec
