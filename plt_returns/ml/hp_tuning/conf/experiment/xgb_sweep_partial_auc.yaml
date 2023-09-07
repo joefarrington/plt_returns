@@ -1,0 +1,47 @@
+# @package _global_
+
+hydra:
+  sweeper:
+    params:
+      model_params.clf__gamma: tag(log, interval(0.1, 100))
+      model_params.clf__learning_rate: tag(log, interval(0.01, 0.3))
+      model_params.clf__max_depth: int(interval(2,20))
+      model_params.clf__min_child_weight: tag(log, interval(0.1, 100))
+      model_params.clf__n_estimators: choice(50,100,200,400,800)
+      model_params.clf__reg_alpha: tag(log, interval(0.01,100))
+      model_params.clf__reg_lambda: tag(log,interval(0.01,100))
+      model_params.clf__scale_pos_weight: tag(log, interval(0.01,100))
+      model_params.clf__subsample: interval(0.1, 1.0)
+
+model_params:
+  clf__base_score: 0.5
+  clf__booster: 'gbtree'
+  clf__colsample_bylevel: 1
+  clf__colsample_bynode: 1
+  clf__colsample_bytree: 1
+  clf__gamma: 0
+  clf__learning_rate: 0.1
+  clf__max_delta_step: 0
+  clf__max_depth: 3
+  clf__min_child_weight: 1
+  clf__n_estimators: 100
+  clf__n_jobs: 1
+  clf__nthread: "None"
+  clf__objective: "binary:logistic"
+  clf__random_state: 0
+  clf__reg_alpha: 0
+  clf__reg_lambda: 1
+  clf__scale_pos_weight: 1
+  clf__seed: 5
+  clf__silent: "None"
+  clf__subsample: 1
+
+clf:
+  _target_: xgboost.XGBClassifier
+mlflow:
+  experiment_name: xgb_sweep_partial_auc_june_12_1800
+
+reporting:
+  score:
+    "partial_auc"
+

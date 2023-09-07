@@ -1,0 +1,64 @@
+defaults:
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+  - _self_
+
+hydra:
+  job:
+    chdir: True
+  sweeper:
+    sampler:
+      seed: 123
+    direction: maximize
+    study_name: initial_test
+    storage: null
+    n_trials: 200
+    n_jobs: 1
+    params:
+      model_params.preproc__discipline__min_frequency: interval(0.01, 0.5)
+      model_params.preproc__ward_name__min_frequency: interval(0.01, 0.5)
+      model_params.preproc__plt_count_request_location__min_frequency: interval(0.01, 0.5)
+model_params:
+  preproc__num__strategy: 'median'
+  preproc__num__add_indicator: True
+  preproc__binary__strategy: 'most_frequent'
+  preproc__binary__add_indicator: True
+  preproc__other_cat__handle_unknown: 'infrequent_if_exist'
+  preproc__other_cat__max_categories: 15
+  preproc__ward_name__handle_unknown: 'infrequent_if_exist'
+  preproc__ward_name__min_frequency: 0.05
+  preproc__discipline__handle_unknown: 'infrequent_if_exist'
+  preproc__discipline__min_frequency: 0.05
+  preproc__plt_count_request_location__handle_unknown: 'infrequent_if_exist'
+  preproc__plt_count_request_location__min_frequency: 0.05
+
+data_filepath: # ADD PATH TO TRAINING DATA CSV
+datetime_cols:
+  - 'request_registered_timestamp'
+  - 'request_required_timestamp'
+binary_cols:
+  - 'male'
+  - 'request_priority'
+preproc_num:
+  _target_: sklearn.impute.SimpleImputer
+preproc_binary:
+  _target_: sklearn.impute.SimpleImputer
+preproc_discipline:
+  _target_: sklearn.preprocessing.OneHotEncoder
+preproc_ward_name:
+  _target_: sklearn.preprocessing.OneHotEncoder
+preproc_plt_count_request_location:
+  _target_: sklearn.preprocessing.OneHotEncoder
+preproc_other_cat:
+  _target_: sklearn.preprocessing.OneHotEncoder
+cross_validation:
+  n_splits: 10
+  scoring:
+    roc_auc: roc_auc
+    average_precision: average_precision
+reporting:
+  score:
+    "roc_auc"
+mlflow:
+  experiment_name: default
+  tracking_uri: # ADD PATH TO TRACKING URI FOR MLFLOW
