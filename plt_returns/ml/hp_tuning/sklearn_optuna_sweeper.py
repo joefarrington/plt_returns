@@ -8,8 +8,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedGroupKFold, cross_validate, GridSearchCV, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_validate, cross_val_score
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import make_scorer, roc_curve, auc
 import mlflow
@@ -32,8 +31,17 @@ class DatetimeProcessor(BaseEstimator, TransformerMixin):
             X[f'{c}_dayofweek'] = X[c].dt.dayofweek
         X = X.drop(cols, axis=1)
         return X
+    
+    def get_feature_names_out(self, input_features=None):
+    """Return a list of output feature names"""
+        feature_names = []
+        for c in input_features:
+            feature_names.append(f'{c}_hour')
+            feature_names.append(f'{c}_weekday')
+        return feature_names
 
 def modified_auc(y_true: np.array, y_pred_proba: np.array, max_fpr:float=0.6):
+    """Calculate partial_auc"""
     fpr, tpr, _ = roc_curve(y_true, y_pred_proba)  # We consider the positive class
 
     # Only consider the part of the curve where the false positive rate is less than max_fpr
