@@ -2,7 +2,8 @@ defaults:
   - policy: standing_order_policy
   - param_search: grid_sampler
   - rollout_wrapper: platelet_bank_defaults
-  - demand: uclh_tx 
+  - demand: uclh_tx
+  - stock: uclh
   - _self_
 
 exp_name: plt_returns_temp # Default settings correspond to this experiment
