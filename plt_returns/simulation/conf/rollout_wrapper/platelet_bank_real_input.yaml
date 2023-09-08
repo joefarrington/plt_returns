@@ -12,15 +12,8 @@ env_kwargs:
   period_split_hour: 12
 env_params:
   slippage: 0.07
-  initial_stock: ${stock.intial_stock}
+  initial_stock: ${stock.initial_stock}
   age_on_arrival_distributions: ${stock.age_on_arrival_distributions}
-  #  - [0.03, 0.11, 0.28, 0.33, 0.25] # Mon
-  #  - [0.05, 0.13, 0.27, 0.35, 0.20] # Tue
-  #  - [0.04, 0.14, 0.38, 0.18, 0.26] # Wed
-  #  - [0.03, 0.09, 0.05, 0.07, 0.76] # Thu
-  #  - [0.04, 0.03, 0.02, 0.29, 0.62] # Fri
-  #  - [0.00, 0.00, 0.11, 0.28, 0.61] # Sat
-  #  - [0.01, 0.05, 0.19, 0.27, 0.48] # Sun
   variable_order_cost: -650
   fixed_order_cost: -225
   shortage_cost: -3250
