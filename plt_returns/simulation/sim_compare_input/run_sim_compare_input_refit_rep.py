@@ -4,30 +4,17 @@ from omegaconf.dictconfig import DictConfig
 import logging
 from datetime import datetime
 import pandas as pd
-import optuna
 from typing import Dict, Tuple, List
-from optuna.study import Study
-import jax
+from pathlib import Path
 import jax.numpy as jnp
 import numpy as np
-import gymnax
-import chex
-import matplotlib.pyplot as plt
-from plt_returns.evaluation.evaluate_policy import create_evaluation_output_summary
-from plt_returns.utils.rollout import RolloutWrapper
-from plt_returns.utils.plotting import plot_heatmap
 from viso_jax.policies.heuristic_policy import HeuristicPolicy
-from viso_jax.utils.yaml import to_yaml, from_yaml
-from viso_jax.simopt.run_optuna_simopt import (
-    param_search_bounds_from_config,
-    grid_search_space_from_config,
-    simopt_grid_sampler,
-    simopt_other_sampler,
-)
-from plt_returns.simulation.run_replenishment_simopt import (
-    evaluation_run_with_simulated_model,
+from viso_jax.utils.yaml import to_yaml
+from plt_returns.utils.simopt import (
     run_simopt,
+    evaluation_run_with_simulated_model,
     process_params_for_log,
+    process_params_for_df,
 )
 
 
@@ -36,12 +23,23 @@ log = logging.getLogger(__name__)
 
 
 def run_simopt_and_evaluate(
-    rep_policy, cfg, combination_name, issue_name, sensitivity, specificity
-):
+    rep_policy: HeuristicPolicy,
+    cfg: DictConfig,
+    combination_name: str,
+    issue_name: str,
+    sensitivity: float,
+    specificity: float,
+    simopt_trials_path: Path,
+) -> Tuple[Dict, pd.DataFrame, pd.DataFrame]:
     cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = sensitivity
     cfg.rollout_wrapper.env_params.return_prediction_model_specificity = specificity
-    print(cfg)
+
     study = run_simopt(cfg, rep_policy)
+
+    trials_df = study.trials_dataframe()
+    cur_trials_path = simopt_trials_path / f"{combination_name}_{issue_name}_trials.csv"
+    trials_df.to_csv(cur_trials_path)
+
     params_output = {}
     best_params = np.array([v for v in study.best_params.values()]).reshape(
         rep_policy.params_shape
@@ -49,16 +47,22 @@ def run_simopt_and_evaluate(
     params_output[f"policy_params_issue_{issue_name}"] = process_params_for_log(
         rep_policy, best_params
     )
-
+    labelled_params_for_df = process_params_for_df(rep_policy, best_params)
     policy_params = jnp.array(best_params)
 
     # Evaluate best replenishment policy under OUFO issuing
-    results = evaluation_run_with_simulated_model(
+    (
+        evaluation_output,
+        evaluation_output_summary_row,
+    ) = evaluation_run_with_simulated_model(
         sensitivity, specificity, cfg, rep_policy, policy_params
     )
-    results["name"] = combination_name
-    results["issuing"] = issue_name
-    return params_output, results
+    evaluation_output_summary_row["name"] = combination_name
+    evaluation_output_summary_row["issuing"] = issue_name
+    evaluation_output_summary_row = pd.DataFrame(
+        labelled_params_for_df | evaluation_output_summary_row, index=[0]
+    )
+    return params_output, evaluation_output, evaluation_output_summary_row
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -67,7 +71,17 @@ def main(cfg: DictConfig) -> None:
     run simulation optimization using Optuna to find the best parameters for  the replenishment
     policy and evaluate the policy using the best parameters on a separate set of rollouts
     """
+
+    # Create a directory to store the evaluation outputs for each sens/spec combination
+    evaluation_output_path = Path("./evaluation_output")
+    evaluation_output_path.mkdir(parents=True, exist_ok=True)
+
+    # Create a directory to store the simopt outputs for each sens/spec combination
+    simopt_trials_path = Path("./simopt_trials")
+    simopt_trials_path.mkdir(parents=True, exist_ok=True)
+
     output_info = {}
+    rep_policy = hydra.utils.instantiate(cfg.policy)
     res = pd.DataFrame()
 
     for combination in cfg.sweep_over:
@@ -97,16 +111,29 @@ def main(cfg: DictConfig) -> None:
             specificity = issue_policy_params["specificity"]
 
             # Run simulation optimization and evaluate
-            params_output, results = run_simopt_and_evaluate(
+            (
+                rep_params_output,
+                evaluation_output,
+                evaluation_output_summary_row,
+            ) = run_simopt_and_evaluate(
                 rep_policy,
                 cfg,
                 combination.name,
                 issue_policy_name,
                 sensitivity,
                 specificity,
+                simopt_trials_path,
             )
-            output_info[combination.name][issue_policy_name] = params_output
-            results_list.append(results)
+
+            # Save down evaluation output to csv
+            cur_eval_path = (
+                evaluation_output_path
+                / f"{combination.name}_{issue_policy_name}_evaluation_output.csv"
+            )
+            evaluation_output.to_csv(cur_eval_path)
+
+            output_info[combination.name][issue_policy_name] = rep_params_output
+            results_list.append(evaluation_output_summary_row)
 
         res = pd.concat([res, *results_list], ignore_index=True)
 
