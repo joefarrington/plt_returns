@@ -227,7 +227,7 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
             probs=params.slippage,
         ).sample(key=slippage_key)
         back_in_stock_from_returned = jnp.hstack(
-            [returned_units[0 : self.max_useful_life - 1] - slippage_units, 0]
+            [0, returned_units[0 : self.max_useful_life - 1] - slippage_units]
         )  # Aging the units being returned
         opening_stock_pm = closing_stock_am + back_in_stock_from_returned
 
