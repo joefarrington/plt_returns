@@ -181,9 +181,15 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
         age_on_arrival_distribution = params.age_on_arrival_distributions[weekday]
 
         # Receive order, with random distributed remaining useful lives
-        received_order = distrax.Multinomial(
-            action, probs=age_on_arrival_distribution
-        ).sample(seed=arrival_key)
+        # Flip the age on arrival distribution, and then flip the final results
+        # so that sampling is consistent with original implementation before
+        # age order vector swapped. We also do this below for other cases
+        # where the age order of stock would affect the sampling.
+        received_order = jnp.flip(
+            distrax.Multinomial(
+                action, probs=jnp.flip(age_on_arrival_distribution)
+            ).sample(seed=arrival_key)
+        )
         opening_stock_am = state.stock + received_order
 
         ## Pre-return activity
@@ -222,10 +228,12 @@ class PlateletBankGymnaxRealInput(PlateletBankGymnax):
         # At this point we find out how many units expired while out on the wards
         returned_units = state.to_be_returned
         expiries_from_returned = returned_units[self.max_useful_life - 1]
-        slippage_units = numpyro.distributions.Binomial(
-            total_count=returned_units[0 : self.max_useful_life - 1],
-            probs=params.slippage,
-        ).sample(key=slippage_key)
+        slippage_units = jnp.flip(
+            numpyro.distributions.Binomial(
+                total_count=jnp.flip(returned_units[0 : self.max_useful_life - 1]),
+                probs=params.slippage,
+            ).sample(key=slippage_key)
+        )
         back_in_stock_from_returned = jnp.hstack(
             [0, returned_units[0 : self.max_useful_life - 1] - slippage_units]
         )  # Aging the units being returned
