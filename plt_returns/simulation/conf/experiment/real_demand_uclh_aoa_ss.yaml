@@ -3,6 +3,7 @@
 defaults:
   - override /policy: sS_policy
   - override /rollout_wrapper: platelet_bank_real_input
+  - override /stock: uclh_2017
 
 exp_name: real_demand_uclh_aoa_ss
 
