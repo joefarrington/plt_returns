@@ -4,7 +4,7 @@ from omegaconf.dictconfig import DictConfig
 import logging
 from datetime import datetime
 import pandas as pd
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 from pathlib import Path
 import jax.numpy as jnp
 import numpy as np
@@ -30,11 +30,12 @@ def run_simopt_and_evaluate(
     sensitivity: float,
     specificity: float,
     simopt_trials_path: Path,
+    initial_params: Optional[Dict[str, int]] = None,
 ) -> Tuple[Dict, pd.DataFrame, pd.DataFrame]:
     cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = sensitivity
     cfg.rollout_wrapper.env_params.return_prediction_model_specificity = specificity
 
-    study = run_simopt(cfg, rep_policy)
+    study = run_simopt(cfg, rep_policy, initial_params)
 
     trials_df = study.trials_dataframe()
     cur_trials_path = simopt_trials_path / f"{combination_name}_{issue_name}_trials.csv"
@@ -47,6 +48,7 @@ def run_simopt_and_evaluate(
     params_output[f"policy_params_issue_{issue_name}"] = process_params_for_log(
         rep_policy, best_params
     )
+    params_dict = study.best_params
     labelled_params_for_df = process_params_for_df(rep_policy, best_params)
     policy_params = jnp.array(best_params)
 
@@ -62,7 +64,7 @@ def run_simopt_and_evaluate(
     evaluation_output_summary_row = pd.DataFrame(
         labelled_params_for_df | evaluation_output_summary_row, index=[0]
     )
-    return params_output, evaluation_output, evaluation_output_summary_row
+    return params_output, params_dict, evaluation_output, evaluation_output_summary_row
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -83,6 +85,9 @@ def main(cfg: DictConfig) -> None:
     output_info = {}
     rep_policy = hydra.utils.instantiate(cfg.policy)
     res = pd.DataFrame()
+    # Initial params are None until we fit first replenishment policy
+    # with OUFO-equivalent issuing policy
+    initial_params = None
 
     for combination in cfg.sweep_over:
         start_time = datetime.now()
@@ -113,6 +118,7 @@ def main(cfg: DictConfig) -> None:
             # Run simulation optimization and evaluate
             (
                 rep_params_output,
+                rep_params_dict,
                 evaluation_output,
                 evaluation_output_summary_row,
             ) = run_simopt_and_evaluate(
@@ -123,7 +129,16 @@ def main(cfg: DictConfig) -> None:
                 sensitivity,
                 specificity,
                 simopt_trials_path,
+                initial_params,
             )
+
+            # If trial was an OUFO trial, update initial params
+            # They will be used as first trial in runs until next time
+            # we do an OUFO run.
+            # Use OUFO from one run as starting point for different sesn/spec with
+            # same settings, and for OUFO of the next setting
+            if sensitivity == 0 and specificity == 1:
+                initial_params = rep_params_dict
 
             # Save down evaluation output to csv
             cur_eval_path = (

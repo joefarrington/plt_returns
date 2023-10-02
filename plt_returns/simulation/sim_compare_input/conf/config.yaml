@@ -1,6 +1,6 @@
 defaults:
   - policy: standing_order_policy
-  - param_search: grid_sampler
+  - param_search: nsgaii_sampler
   - rollout_wrapper: platelet_bank_defaults
   - demand: uclh_tx
   - stock: uclh
@@ -36,4 +36,7 @@ issue_policies:
   ppm:
     sensitivity: 1.0
     specificity: 1.0
+
+param_search:
+  early_stopping_rounds: 50
   

@@ -2,7 +2,6 @@
 
 defaults:
   - override /policy: sS_policy
-  - override /param_search: nsgaii_sampler
 
 exp_name: sweep_slippage
 
