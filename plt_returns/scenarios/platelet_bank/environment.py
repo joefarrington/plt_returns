@@ -134,7 +134,7 @@ class EnvParams:
                 if len(age_on_arrival_distributions) == 7:
                     return jnp.array(
                         [x for x in age_on_arrival_distributions]
-                    )  # TODO: Change when configs changed
+                    )  
                 else:
                     raise ValueError(
                         "Expected a list of 7 lists. Got a list of {} lists.".format(
@@ -145,7 +145,7 @@ class EnvParams:
                 # if it's a single list, repeat it seven times
                 return jnp.array(
                     [age_on_arrival_distributions] * 7
-                )  # TODO Change when configs changed
+                )  
         else:
             raise TypeError(
                 "Expected a list or a list of lists. Got {}.".format(
@@ -176,6 +176,7 @@ class PlateletBankGymnax(environment.Environment):
 
     @property
     def default_params(self) -> EnvParams:
+        """Get the default parameters for the environment."""
         return EnvParams.create_env_params()
 
     def step_env(
@@ -438,6 +439,7 @@ class PlateletBankGymnax(environment.Environment):
         slippage: int,
         params: EnvParams,
     ) -> int:
+        """Calculate reward for the current step"""
         costs = jnp.array(
             [
                 params.fixed_order_cost,

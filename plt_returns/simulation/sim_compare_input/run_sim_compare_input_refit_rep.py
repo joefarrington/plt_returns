@@ -32,6 +32,7 @@ def run_simopt_and_evaluate(
     simopt_trials_path: Path,
     initial_params: Optional[Dict[str, int]] = None,
 ) -> Tuple[Dict, pd.DataFrame, pd.DataFrame]:
+    """Run the simulation optimization and evaluate the policies"""
     cfg.rollout_wrapper.env_params.return_prediction_model_sensitivity = sensitivity
     cfg.rollout_wrapper.env_params.return_prediction_model_specificity = specificity
 

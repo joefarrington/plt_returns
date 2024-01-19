@@ -30,9 +30,6 @@ from viso_jax.utils.yaml import to_yaml
 # Enable logging
 log = logging.getLogger(__name__)
 
-# TODO Should we seed the search with the OUFO policy? Or just start from scratch?
-
-
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
     """Run simulation optimization using Optuna to find the best parameters for a policy,
